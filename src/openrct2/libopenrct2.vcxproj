@@ -553,6 +553,7 @@
     <ClInclude Include="ride\rtd\thrill\GoKarts.h" />
     <ClInclude Include="ride\rtd\thrill\LaunchedFreefall.h" />
     <ClInclude Include="ride\rtd\thrill\MagicCarpet.h" />
+    <ClInclude Include="ride\rtd\thrill\TiltAWhirl.h" />
     <ClInclude Include="ride\rtd\thrill\MotionSimulator.h" />
     <ClInclude Include="ride\rtd\thrill\RotoDrop.h" />
     <ClInclude Include="ride\rtd\thrill\SwingingInverterShip.h" />
@@ -1093,6 +1094,7 @@
     <ClCompile Include="paint\track\thrill\Enterprise.cpp" />
     <ClCompile Include="paint\track\thrill\GoKarts.cpp" />
     <ClCompile Include="paint\track\thrill\LaunchedFreefall.cpp" />
+    <ClCompile Include="paint\track\thrill\GenericFlatRide.cpp" />
     <ClCompile Include="paint\track\thrill\MagicCarpet.cpp" />
     <ClCompile Include="paint\track\thrill\MotionSimulator.cpp" />
     <ClCompile Include="paint\track\thrill\SwingingShip.cpp" />

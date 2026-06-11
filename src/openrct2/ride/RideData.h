@@ -491,6 +491,36 @@ constexpr RtdFlags kRtdFlagsCommonCoaster = { RtdFlag::hasGForces,
 constexpr RtdFlags kRtdFlagsCommonCoasterNonAlt = { RtdFlag::showInTrackDesigner, RtdFlag::hasAirTime,
                                                     RtdFlag::hasEntranceAndExit };
 
+// Data-driven paint parameters for simple rotation-style flat rides (Twist/Merry-Go-Round family).
+// Image formula: BaseImageId + (direction * FramesPerDir) + animFrame
+// Rider formula (per gondola g, seats 2g/2g+1): BaseImageId + (g+1) * 4*FramesPerDir
+//                + (direction * FramesPerDir) + animFrame
+// Each gondola gets its own full 4-direction x FramesPerDir sheet — a shared/phase-shifted
+// sheet (Twist/Enterprise-style) only works when every gondola follows a copy of the same
+// motion curve at different offsets, which doesn't hold for hand-keyframed rides where each
+// gondola has a unique path. Riders are recoloured via secondary remap (seat 2g) and
+// tertiary remap (seat 2g+1).
+// BaseImageId == 0 means "not a generic rotation ride" — paint function returns early.
+struct FlatRideRotationDescriptor
+{
+    uint32_t BaseImageId      = 0;   // first sprite in the sheet
+    uint8_t  FramesPerDir     = 0;   // animation frames per direction
+    uint8_t  RiderFrameStride = 0;   // number of gondola rider-pair sheets (0 = no riders)
+    int8_t   DrawOffsetX      = 0;   // pixel offset from tile centre
+    int8_t   DrawOffsetY      = 0;
+    uint8_t  BbLengthX        = 24;  // occlusion bounding-box dimensions
+    uint8_t  BbLengthY        = 24;
+    uint8_t  BbLengthZ        = 48;
+    // Override vehicle spriteData bounds used by invalidate() when the ride footprint is
+    // larger than the vehicle's native sprite size. 0 = use carEntry defaults.
+    // Required when the entity sits at the origin tile but the visual is several tiles away
+    // (e.g. 5×5 rides: sprite centre is world +64,+64 from entity = ±128px horizontal
+    // or ±64px vertical in isometric screen space depending on camera rotation).
+    uint8_t  InvalidationHalfWidth   = 0;
+    uint8_t  InvalidationHeightAbove = 0;
+    uint8_t  InvalidationHeightBelow = 0;
+};
+
 struct RideTypeDescriptor
 {
     RideCategory Category{};
@@ -560,6 +590,8 @@ struct RideTypeDescriptor
     UpdateRideApproachVehicleWaypointsFunction UpdateRideApproachVehicleWaypoints = OpenRCT2::
         updateRideApproachVehicleWaypointsDefault;
     RtdSpecialType specialType = RtdSpecialType::none;
+
+    FlatRideRotationDescriptor FlatRideRotation{};
 
     /** @deprecated */
     bool SupportsTrackGroup(OpenRCT2::TrackGroup trackGroup) const;

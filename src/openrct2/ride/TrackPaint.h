@@ -86,6 +86,46 @@ constexpr uint8_t kEdges4x4[] = {
 };
 // clang-format on
 
+// clang-format off
+// kTrackMap5x5[dir][storedSeq] → switch-case (physical tile position) for camera direction dir.
+// storedSeq 0 = center tile (trackOrigin); indices 1-24 = remaining tiles NW→SE row-major.
+// Derived from the original identity mapping by permuting: new[dir][i] = old[dir][old_seq_for(i)],
+// where old_seq_for(0)=12 (center) and old_seq_for(1..24)=0..11,13..24 (skipping 12).
+constexpr uint8_t kTrackMap5x5[][25] = {
+    { 12,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24 },
+    { 12,  4,  9, 14, 19, 24,  3,  8, 13, 18, 23,  2,  7, 17, 22,  1,  6, 11, 16, 21,  0,  5, 10, 15, 20 },
+    { 12, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1,  0 },
+    { 12, 20, 15, 10,  5,  0, 21, 16, 11,  6,  1, 22, 17,  7,  2, 23, 18, 13,  8,  3, 24, 19, 14,  9,  4 },
+};
+constexpr uint8_t kEdges5x5[] = {
+    EDGE_NE | EDGE_NW,
+    EDGE_NE,
+    EDGE_NE,
+    EDGE_NE,
+    EDGE_NE | EDGE_SE,
+    EDGE_NW,
+    0,
+    0,
+    0,
+    EDGE_SE,
+    EDGE_NW,
+    0,
+    0,
+    0,
+    EDGE_SE,
+    EDGE_NW,
+    0,
+    0,
+    0,
+    EDGE_SE,
+    EDGE_NW | EDGE_SW,
+    EDGE_SW,
+    EDGE_SW,
+    EDGE_SW,
+    EDGE_SW | EDGE_SE,
+};
+// clang-format on
+
 constexpr uint8_t kTrackMap1x4[][4] = {
     { 0, 1, 2, 3 },
     { 2, 3, 0, 1 },
@@ -665,3 +705,4 @@ namespace OpenRCT2::AlpineRC
 TrackPaintFunction GetTrackPaintFunctionClassicWoodenRC(OpenRCT2::TrackElemType trackType);
 TrackPaintFunction GetTrackPaintFunctionClassicStandUpRC(OpenRCT2::TrackElemType trackType);
 TrackPaintFunction GetTrackPaintFunctionClassicWoodenTwisterRC(OpenRCT2::TrackElemType trackType);
+TrackPaintFunction GetTrackPaintFunctionGenericFlatRide(OpenRCT2::TrackElemType trackType);

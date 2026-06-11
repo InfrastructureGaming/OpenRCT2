@@ -9,6 +9,14 @@
 
 #include "TrackData.h"
 
+// kTrackElementDescriptors is initialized via std::to_array with 351 TrackElementDescriptor
+// elements. With kMaxSequencesPerPiece=25, each element is ~1800 bytes; the braced-initializer
+// list creates ~630 KB of stack temporaries during startup, exceeding the 1 MB default.
+// Increasing the stack reserve to 8 MB resolves the STATUS_STACK_OVERFLOW crash.
+#ifdef _MSC_VER
+#    pragma comment(linker, "/STACK:8388608")
+#endif
+
 #include "../core/EnumUtils.hpp"
 #include "../localisation/StringIds.h"
 #include "TrackPaint.h"
@@ -28,6 +36,7 @@
 #include "ted/TrackElementDescriptor.h"
 
 #include <cstdint>
+#include <tuple>
 
 using namespace OpenRCT2;
 
@@ -10352,7 +10361,9 @@ namespace OpenRCT2::TrackMetadata
         .sequenceData = { 4, { kDiagDown25Seq0, kDiagDown25Seq1, kDiagDown25Seq2, kDiagDown25Seq3 } },
     };
 
-    static constexpr auto kTrackElementDescriptors = std::to_array<TrackElementDescriptor>({
+    // Must be static const rather than static constexpr: kTEDFlatTrack5x5 is static const
+    // (MSVC constexpr depth limit with 351×25 SequenceTables), which prevents constexpr here.
+    static const auto kTrackElementDescriptors = std::to_array<TrackElementDescriptor>({
         kTEDFlat,
         kTEDEndStation,
         kTEDBeginStation,
@@ -10703,8 +10714,11 @@ namespace OpenRCT2::TrackMetadata
         kTEDLeftEighthDiveLoopDownToDiag,
         kTEDRightEighthDiveLoopDownToDiag,
         kTEDDiagDown25Brakes,
+        kTEDFlatTrack5x5,
     });
-    static_assert(kTrackElementDescriptors.size() == EnumValue(TrackElemType::count));
+    // std::size() on a non-constexpr array is not a constant expression, so use tuple_size
+    // on the array type (via remove_const_t + decltype) which IS a compile-time constant.
+    static_assert(std::tuple_size<std::remove_const_t<decltype(kTrackElementDescriptors)>>::value == EnumValue(TrackElemType::count));
 
 #pragma endregion
 
