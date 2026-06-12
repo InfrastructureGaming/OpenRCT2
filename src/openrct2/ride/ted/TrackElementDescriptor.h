@@ -25,7 +25,7 @@
 
 namespace OpenRCT2::TrackMetadata
 {
-    constexpr uint8_t kMaxSequencesPerPiece = 25;
+    constexpr uint8_t kMaxSequencesPerPiece = 36;
 
     using TrackComputeFunction = int32_t (*)(int16_t);
 

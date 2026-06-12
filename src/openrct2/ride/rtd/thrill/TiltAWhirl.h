@@ -19,7 +19,7 @@ namespace OpenRCT2
 constexpr RideTypeDescriptor TiltAWhirlRTD =
 {
     .Category = RideCategory::thrill,
-    .StartTrackPiece = TrackElemType::flatTrack5x5,
+    .StartTrackPiece = TrackElemType::flatTrack6x6,
     .TrackPaintFunctions = TrackDrawerDescriptor({
         .trackStyle = TrackStyle::genericRotatingFlatRide,
         .enabledTrackGroups = {},
@@ -33,7 +33,7 @@ constexpr RideTypeDescriptor TiltAWhirlRTD =
                      RtdFlag::interestingToLookAt),
     .RideModes = EnumsToFlags(RideMode::rotation),
     .DefaultMode = RideMode::rotation,
-    .OperatingSettings = { 7, 15 },
+    .OperatingSettings = { 3, 15 },
     .Naming = { STR_RIDE_NAME_TILT_A_WHIRL, STR_RIDE_DESCRIPTION_TILT_A_WHIRL },
     .NameConvention = { RideComponentType::Car, RideComponentType::Structure, RideComponentType::Station },
     .availableBreakdowns = { Breakdown::safetyCutOut },
@@ -70,13 +70,20 @@ constexpr RideTypeDescriptor TiltAWhirlRTD =
     .FlatRideRotation =
     {
         .FramesPerDir = 128,
-        .RiderFrameStride = 7,  // 7 cars, 2 seats each (14 total)
-        // 5x5 footprint: entity is at origin tile, sprite centre is world (+64,+64) away.
-        // That maps to ±128px horizontal or ±64px vertical offset depending on camera rotation.
-        // Add half the 166x116 sprite size on top of those offsets.
-        .InvalidationHalfWidth   = 220,  // >= 128 + 83 (half sprite width)
-        .InvalidationHeightAbove = 140,  // >= 64 + 58 (half sprite height)
-        .InvalidationHeightBelow = 140,
+        // All 7 cars re-rendered at the new 243x170 size (see project_flat_ride memory).
+        .RiderFrameStride = 7,
+        // 6x6 footprint: cursor/trackOrigin tile is grid (2,2), one tile-width off from the
+        // true geometric center. PaintGenericRotatingFlatRide6x6 applies a +16,+16 world-unit
+        // shift (rotated per direction) to draw the sprite centered on the grid instead of on
+        // the cursor tile — a small (<=16 unit) offset from the entity's exact position.
+        // Re-rendered Core sprite is 243x170 (spriteWidth=122, spriteHeight=85), with
+        // per-direction sprite anchors calibrated in generate_rider_manifest.ps1.
+        // Invalidation values scaled up proportionally from the prior 200x140/100x70
+        // sprite (220/140/140 -> ~270/170/170), but InvalidationHalfWidth is uint8_t
+        // (max 255), so it's capped at 255 instead of the proportional 270.
+        .InvalidationHalfWidth   = 255,
+        .InvalidationHeightAbove = 170,
+        .InvalidationHeightBelow = 170,
     },
 };
 } // namespace OpenRCT2

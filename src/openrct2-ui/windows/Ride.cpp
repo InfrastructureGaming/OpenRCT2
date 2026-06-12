@@ -1285,11 +1285,9 @@ namespace OpenRCT2::Ui::Windows
 
                 auto screenCoords = ScreenCoordsXY{ widget.left + 1, widget.top + 1 };
                 int32_t clipWidth = widget.right - screenCoords.x;
+                // Always clip to the tab's own bounds; the icon must never bleed into the
+                // window body below, regardless of selection state.
                 int32_t clipHeight = widget.bottom - screenCoords.y;
-                if (page == WINDOW_RIDE_PAGE_VEHICLE && !isHalfScale)
-                {
-                    clipHeight += 4;
-                }
 
                 screenCoords += windowPos;
 
@@ -1324,7 +1322,9 @@ namespace OpenRCT2::Ui::Windows
                 imageIndex &= carEntry.TabRotationMask;
                 imageIndex *= carEntry.base_num_frames;
                 imageIndex += carEntry.base_image_id;
-                auto imageId = ImageId(imageIndex, vehicleColour.Body, vehicleColour.Trim, vehicleColour.Tertiary);
+                // Mirror GenericFlatRide.cpp's remap convention: Body->secondary, Trim->tertiary
+                // (primary remap is unreachable from our -m closest Blender pipeline).
+                auto imageId = ImageId(imageIndex, vehicleColour.Body, vehicleColour.Body, vehicleColour.Trim);
                 GfxDrawSprite(clipRT, imageId, spriteCoords);
             }
         }
@@ -3012,7 +3012,9 @@ namespace OpenRCT2::Ui::Windows
             imageIndex *= carEntry.base_num_frames;
             imageIndex += carEntry.base_image_id;
 
-            return ImageId(imageIndex, vehicleColour.Body, vehicleColour.Trim, vehicleColour.Tertiary);
+            // Mirror GenericFlatRide.cpp's remap convention: Body->secondary, Trim->tertiary
+            // (primary remap is unreachable from our -m closest Blender pipeline).
+            return ImageId(imageIndex, vehicleColour.Body, vehicleColour.Body, vehicleColour.Trim);
         }
 
         struct VehicleDrawInfo
@@ -3066,14 +3068,24 @@ namespace OpenRCT2::Ui::Windows
             Rectangle::fill(rt, { { rt.x, rt.y }, { rt.x + rt.width, rt.y + rt.height } }, PaletteIndex::pi12);
 
             const Widget& widget = widgets[WIDX_VEHICLE_TRAINS_PREVIEW];
-            int32_t startX = std::max(2, (widget.width() - 1 - ((ride->numTrains - 1) * 36)) / 2 - 25);
-            int32_t startY = widget.height() - 5;
 
             bool isReversed = ride->flags.has(RideFlag::reversedTrains);
             const int32_t firstCarIndex = (isReversed) ? ride->numCarsPerTrain - 1 : 0;
             const auto& firstCarEntry = rideEntry->Cars[RideEntryGetVehicleAtPosition(
                 ride->subtype, ride->numCarsPerTrain, firstCarIndex)];
-            startY += firstCarEntry.tab_height;
+
+            // Centre the first car's preview sprite within the widget based on its actual
+            // G1 width/anchor, rather than the "-25" constant, which assumes a ~50px-wide
+            // vehicle sprite whose anchor sits at roughly its horizontal centre.
+            int32_t centeringOffset = 25;
+            const auto previewImageId = getVehiclePreviewImageId(*ride, *rideEntry, firstCarEntry, 0, firstCarIndex, isReversed);
+            if (const auto* previewG1 = GfxGetG1Element(previewImageId); previewG1 != nullptr)
+            {
+                centeringOffset = (firstCarEntry.spacing / 17432) + previewG1->xOffset + previewG1->width / 2;
+            }
+
+            int32_t startX = std::max(2, (widget.width() - 1 - ((ride->numTrains - 1) * 36)) / 2 - centeringOffset);
+            int32_t startY = widget.height() - 5 + firstCarEntry.tab_height;
 
             // Prepare and draw each train
             for (int32_t i = 0; i < ride->numTrains; i++)
@@ -5119,7 +5131,9 @@ namespace OpenRCT2::Ui::Windows
             imageIndex &= carEntry.TabRotationMask;
             imageIndex *= carEntry.base_num_frames;
             imageIndex += carEntry.base_image_id;
-            auto imageId = ImageId(imageIndex, vehicleColour.Body, vehicleColour.Trim, vehicleColour.Tertiary);
+            // Mirror GenericFlatRide.cpp's remap convention: Body->secondary, Trim->tertiary
+            // (primary remap is unreachable from our -m closest Blender pipeline).
+            auto imageId = ImageId(imageIndex, vehicleColour.Body, vehicleColour.Body, vehicleColour.Trim);
             GfxDrawSprite(rt, imageId, screenCoords);
         }
 

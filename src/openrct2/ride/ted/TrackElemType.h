@@ -382,8 +382,9 @@ namespace OpenRCT2
         diagDown25Brakes = 349,
 
         flatTrack5x5 = 350,
+        flatTrack6x6 = 351,
 
-        count = 351,
+        count = 352,
 
         none = 65535,
     };

@@ -13,6 +13,7 @@
 #include "../../../ride/Ride.h"
 #include "../../../ride/RideData.h"
 #include "../../../ride/RideEntry.h"
+#include "../../../ride/TrackData.h"
 #include "../../../ride/TrackPaint.h"
 #include "../../../ride/Vehicle.h"
 #include "../../Boundbox.h"
@@ -20,6 +21,8 @@
 #include "../../support/WoodenSupports.h"
 #include "../../tile_element/Segment.h"
 #include "../../track/Segment.h"
+
+#include <utility>
 
 using namespace OpenRCT2;
 
@@ -276,12 +279,108 @@ static void PaintGenericRotatingFlatRide5x5(
     PaintUtilSetGeneralSupportHeight(session, height + 160);
 }
 
+// Rotates a tile-local (x,y) offset by direction*90°. This is the rotation rule implicitly
+// encoded by kTrackMap5x5 + the fixed offsets in PaintGenericRotatingFlatRide5x5's switch
+// (verified against all 4 direction rows: storedSeq1's -clearance (64,64) rotates to
+// (64,64)/case0, (64,-64)/case4, (-64,-64)/case24, (-64,64)/case20 for dir 0-3).
+static constexpr std::pair<int8_t, int8_t> RotateOffset90(int8_t x, int8_t y, uint8_t direction)
+{
+    switch (direction & 3)
+    {
+        case 0:  return { x, y };
+        case 1:  return { y, static_cast<int8_t>(-x) };
+        case 2:  return { static_cast<int8_t>(-x), static_cast<int8_t>(-y) };
+        default: return { static_cast<int8_t>(-y), x };
+    }
+}
+
+// Cyclically rotates edge flags by `direction` steps. EDGE_NE(1)/EDGE_SE(2)/EDGE_SW(4)/EDGE_NW(8)
+// are already in rotational order, so this is a 4-bit cyclic rotate. Verified against
+// kEdges5x5: RotateEdges(EDGE_NE|EDGE_NW, dir) reproduces case0/4/24/20 for dir 0-3.
+static constexpr uint8_t RotateEdges(uint8_t edges, uint8_t direction)
+{
+    direction &= 3;
+    return static_cast<uint8_t>(((edges << direction) | (edges >> (4 - direction))) & 0xF);
+}
+
+// {xMin, xMax, yMin, yMax} of the rotated 6x6 offset range. The draw offset is centered
+// on the true grid center (see the +16,+16 shift in PaintGenericRotatingFlatRide6x6),
+// which makes this range symmetric about zero and identical for every camera direction.
+// Used to identify which screen-corner a corner tile's rotated offset falls on.
+constexpr int8_t kFlatTrack6x6Bounds[4] = { -80, 80, -80, 80 };
+
+/**
+ * 6x6 footprint variant. Unlike 5x5 (an odd grid whose center tile doubles as the cursor
+ * tile and maps onto itself under 90° rotation, enabling fixed kTrackMap5x5/kEdges5x5
+ * lookup tables), 6x6 is an even grid with no true center tile — the cursor tile (idx 0,
+ * clearance (0,0)) is one tile-width off from the geometric center, and the grid does not
+ * map onto itself under rotation around it. Instead of per-direction lookup tables, each
+ * tile's draw offset/edges/corner role are computed analytically from its own `clearance`
+ * (read from the TED at runtime) and the current `direction`.
+ */
+static void PaintGenericRotatingFlatRide6x6(
+    PaintSession& session, const Ride& ride, uint8_t trackSequence, uint8_t direction, int32_t height,
+    const TrackElement& trackElement, SupportType supportType)
+{
+    const auto& ted = OpenRCT2::TrackMetadata::GetTrackElementDescriptor(TrackElemType::flatTrack6x6);
+    const auto& clearance = ted.sequenceData.sequences[trackSequence].clearance;
+
+    uint8_t localEdges = 0;
+    if (clearance.x == -64)
+        localEdges |= EDGE_NE;
+    if (clearance.x == 96)
+        localEdges |= EDGE_SW;
+    if (clearance.y == -64)
+        localEdges |= EDGE_NW;
+    if (clearance.y == 96)
+        localEdges |= EDGE_SE;
+    const uint8_t edges = RotateEdges(localEdges, direction);
+
+    auto stationColour = GetStationColourScheme(session, trackElement);
+    WoodenASupportsPaintSetupRotated(
+        session, WoodenSupportType::truss, WoodenSupportSubType::neSw, direction, height, stationColour);
+
+    const StationObject* stationObject = ride.getStationObject();
+    TrackPaintUtilPaintFloor(session, edges, stationColour, height, kFloorSpritesMulch, stationObject);
+
+    TrackPaintUtilPaintFences(
+        session, edges, session.MapPosition, trackElement, ride, stationColour, height, kFenceSpritesRope,
+        session.CurrentRotation);
+
+    // Shift the draw target from the cursor/trackOrigin tile (grid 2,2) to the true
+    // geometric center of the 6x6 grid (grid 2.5,2.5) — +16 world units in both axes —
+    // before rotating, so the structure renders centered on the 6x6 plot in every
+    // camera direction instead of one tile high/left of center.
+    const auto [ox, oy] = RotateOffset90(
+        static_cast<int8_t>(-clearance.x + 16), static_cast<int8_t>(-clearance.y + 16), direction);
+    PaintGenericRotatingStructure(session, ride, direction, ox, oy, height, stationColour);
+
+    int32_t cornerSegments = 0;
+    const bool isCorner = (clearance.x == -64 || clearance.x == 96) && (clearance.y == -64 || clearance.y == 96);
+    if (isCorner)
+    {
+        const auto& b = kFlatTrack6x6Bounds;
+        if (ox == b[1] && oy == b[3])
+            cornerSegments = EnumsToFlags(PaintSegment::top, PaintSegment::topLeft, PaintSegment::topRight);
+        else if (ox == b[1] && oy == b[2])
+            cornerSegments = EnumsToFlags(PaintSegment::topRight, PaintSegment::right, PaintSegment::bottomRight);
+        else if (ox == b[0] && oy == b[3])
+            cornerSegments = EnumsToFlags(PaintSegment::topLeft, PaintSegment::left, PaintSegment::bottomLeft);
+        else
+            cornerSegments = EnumsToFlags(PaintSegment::bottomLeft, PaintSegment::bottom, PaintSegment::bottomRight);
+    }
+    PaintUtilSetSegmentSupportHeight(session, cornerSegments, height + 2, 0x20);
+    PaintUtilSetSegmentSupportHeight(session, kSegmentsAll & ~cornerSegments, 0xFFFF, 0);
+    PaintUtilSetGeneralSupportHeight(session, height + 160);
+}
+
 TrackPaintFunction GetTrackPaintFunctionGenericFlatRide(TrackElemType trackType)
 {
     switch (trackType)
     {
         case TrackElemType::flatTrack4x4: return PaintGenericRotatingFlatRide;
         case TrackElemType::flatTrack5x5: return PaintGenericRotatingFlatRide5x5;
+        case TrackElemType::flatTrack6x6: return PaintGenericRotatingFlatRide6x6;
         default:                          return TrackPaintFunctionDummy;
     }
 }

@@ -9,9 +9,9 @@
 
 #include "TrackData.h"
 
-// kTrackElementDescriptors is initialized via std::to_array with 351 TrackElementDescriptor
-// elements. With kMaxSequencesPerPiece=25, each element is ~1800 bytes; the braced-initializer
-// list creates ~630 KB of stack temporaries during startup, exceeding the 1 MB default.
+// kTrackElementDescriptors is initialized via std::to_array with 352 TrackElementDescriptor
+// elements. With kMaxSequencesPerPiece=36, each element is ~2500 bytes; the braced-initializer
+// list creates ~900 KB of stack temporaries during startup, exceeding the 1 MB default.
 // Increasing the stack reserve to 8 MB resolves the STATUS_STACK_OVERFLOW crash.
 #ifdef _MSC_VER
 #    pragma comment(linker, "/STACK:8388608")
@@ -10361,8 +10361,9 @@ namespace OpenRCT2::TrackMetadata
         .sequenceData = { 4, { kDiagDown25Seq0, kDiagDown25Seq1, kDiagDown25Seq2, kDiagDown25Seq3 } },
     };
 
-    // Must be static const rather than static constexpr: kTEDFlatTrack5x5 is static const
-    // (MSVC constexpr depth limit with 351×25 SequenceTables), which prevents constexpr here.
+    // Must be static const rather than static constexpr: kTEDFlatTrack5x5 and kTEDFlatTrack6x6
+    // are static const (MSVC constexpr depth limit with 25/36-slot SequenceTables), which
+    // prevents constexpr here.
     static const auto kTrackElementDescriptors = std::to_array<TrackElementDescriptor>({
         kTEDFlat,
         kTEDEndStation,
@@ -10715,6 +10716,7 @@ namespace OpenRCT2::TrackMetadata
         kTEDRightEighthDiveLoopDownToDiag,
         kTEDDiagDown25Brakes,
         kTEDFlatTrack5x5,
+        kTEDFlatTrack6x6,
     });
     // std::size() on a non-constexpr array is not a constant expression, so use tuple_size
     // on the array type (via remove_const_t + decltype) which IS a compile-time constant.

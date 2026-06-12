@@ -266,6 +266,158 @@ namespace OpenRCT2::TrackMetadata
         .flags = { SequenceFlag::entranceConnectionSE, SequenceFlag::entranceConnectionSW, SequenceFlag::hasHeightMarker },
     };
 
+    // 6×6 flat ride base — 36 tiles. Direct generalisation of the 5×5 grid above: rows/cols
+    // 0-5, clearance = ((row-2)*32, (col-2)*32). seq14 (row2,col2) is the cursor/trackOrigin
+    // tile. Unlike 5×5, this grid is even and has no true geometric center — seq14 is the
+    // tile nearest center, one tile-width off from the actual center point. The paint
+    // function (PaintGenericRotatingFlatRide6x6) computes per-tile rotation/edges
+    // analytically from clearance rather than via a fixed lookup table.
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq0 = {
+        .clearance = { -64, -64, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionNE, SequenceFlag::entranceConnectionNW, SequenceFlag::hasHeightMarker },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq1 = {
+        .clearance = { -64, -32, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionNE },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq2 = {
+        .clearance = { -64, 0, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionNE },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq3 = {
+        .clearance = { -64, 32, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionNE },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq4 = {
+        .clearance = { -64, 64, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionNE },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq5 = {
+        .clearance = { -64, 96, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionNE, SequenceFlag::entranceConnectionSE, SequenceFlag::hasHeightMarker },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq6 = {
+        .clearance = { -32, -64, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionNW },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq7 = {
+        .clearance = { -32, -32, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq8 = {
+        .clearance = { -32, 0, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq9 = {
+        .clearance = { -32, 32, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq10 = {
+        .clearance = { -32, 64, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq11 = {
+        .clearance = { -32, 96, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionSE },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq12 = {
+        .clearance = { 0, -64, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionNW },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq13 = {
+        .clearance = { 0, -32, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq14 = {
+        .clearance = { 0, 0, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::trackOrigin },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq15 = {
+        .clearance = { 0, 32, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq16 = {
+        .clearance = { 0, 64, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq17 = {
+        .clearance = { 0, 96, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionSE },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq18 = {
+        .clearance = { 32, -64, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionNW },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq19 = {
+        .clearance = { 32, -32, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq20 = {
+        .clearance = { 32, 0, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq21 = {
+        .clearance = { 32, 32, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq22 = {
+        .clearance = { 32, 64, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq23 = {
+        .clearance = { 32, 96, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionSE },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq24 = {
+        .clearance = { 64, -64, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionNW },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq25 = {
+        .clearance = { 64, -32, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq26 = {
+        .clearance = { 64, 0, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq27 = {
+        .clearance = { 64, 32, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq28 = {
+        .clearance = { 64, 64, 0, 0, { 0b1111, 0 }, {} },
+        .woodenSupports = { WoodenSupportSubType::neSw },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq29 = {
+        .clearance = { 64, 96, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionSE },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq30 = {
+        .clearance = { 96, -64, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionSW, SequenceFlag::entranceConnectionNW, SequenceFlag::hasHeightMarker },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq31 = {
+        .clearance = { 96, -32, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionSW },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq32 = {
+        .clearance = { 96, 0, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionSW },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq33 = {
+        .clearance = { 96, 32, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionSW },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq34 = {
+        .clearance = { 96, 64, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionSW },
+    };
+    static constexpr SequenceDescriptor kFlatTrack6x6Seq35 = {
+        .clearance = { 96, 96, 0, 0, { 0b1111, 0 }, {} },
+        .flags = { SequenceFlag::entranceConnectionSE, SequenceFlag::entranceConnectionSW, SequenceFlag::hasHeightMarker },
+    };
+
     static constexpr SequenceDescriptor kFlatTrack2x4Seq0 = {
         .clearance = { 0, 0, 0, 0, { 0b1111, 0 }, {} },
         .flags = { SequenceFlag::entranceConnectionNE, SequenceFlag::entranceConnectionNW, SequenceFlag::trackOrigin,
@@ -527,6 +679,38 @@ namespace OpenRCT2::TrackMetadata
                             kFlatTrack5x5Seq18, kFlatTrack5x5Seq19,                               // idx 18-19: row 4 cont.
                             kFlatTrack5x5Seq20, kFlatTrack5x5Seq21, kFlatTrack5x5Seq22,           // idx 20-22: SW row
                             kFlatTrack5x5Seq23, kFlatTrack5x5Seq24 } },                           // idx 23-24: SW row cont.
+    };
+
+    // Must be static const (not constexpr) — see kTEDFlatTrack5x5 comment above; the same
+    // MSVC constexpr-evaluation-depth limit applies here with a 36-slot SequenceTable.
+    static const TrackElementDescriptor kTEDFlatTrack6x6 = TrackElementDescriptor{
+        .description = STR_BASE_SIZE_6_X_6,
+        .coordinates = { 0, 2, 0, 0, 0, 32 },
+        .pieceLength = 0,
+        .curveChain = { TrackCurve::none, TrackCurve::none },
+        .priceModifier = 1638400,
+        .mirrorElement = TrackElemType::flatTrack6x6,
+        .flags = {},
+        .definition = { TrackGroup::flatRideBase, TrackPitch::none, TrackPitch::none, TrackRoll::none, TrackRoll::none, 0 },
+        // IMPORTANT: sequences[0] MUST be the cursor tile (clearance 0,0) with trackOrigin flag —
+        // see the ghost-removal explanation on kTEDFlatTrack5x5. Unlike 5x5, the remaining
+        // sequence ordering carries no lookup-table dependency (PaintGenericRotatingFlatRide6x6
+        // computes everything analytically from each sequence's own clearance), so idx 1-35
+        // simply follow row-major order with idx 14 (the cursor tile) removed.
+        .sequenceData = { 36,
+                          { kFlatTrack6x6Seq14,                                                     // idx  0: (row2,col2) = cursor tile
+                            kFlatTrack6x6Seq0,  kFlatTrack6x6Seq1,  kFlatTrack6x6Seq2,
+                            kFlatTrack6x6Seq3,  kFlatTrack6x6Seq4,  kFlatTrack6x6Seq5,              // idx  1-6 : row 0
+                            kFlatTrack6x6Seq6,  kFlatTrack6x6Seq7,  kFlatTrack6x6Seq8,
+                            kFlatTrack6x6Seq9,  kFlatTrack6x6Seq10, kFlatTrack6x6Seq11,             // idx  7-12: row 1
+                            kFlatTrack6x6Seq12, kFlatTrack6x6Seq13,                                 // idx 13-14: row 2 left half
+                            kFlatTrack6x6Seq15, kFlatTrack6x6Seq16, kFlatTrack6x6Seq17,             // idx 15-17: row 2 right half
+                            kFlatTrack6x6Seq18, kFlatTrack6x6Seq19, kFlatTrack6x6Seq20,
+                            kFlatTrack6x6Seq21, kFlatTrack6x6Seq22, kFlatTrack6x6Seq23,             // idx 18-23: row 3
+                            kFlatTrack6x6Seq24, kFlatTrack6x6Seq25, kFlatTrack6x6Seq26,
+                            kFlatTrack6x6Seq27, kFlatTrack6x6Seq28, kFlatTrack6x6Seq29,             // idx 24-29: row 4
+                            kFlatTrack6x6Seq30, kFlatTrack6x6Seq31, kFlatTrack6x6Seq32,
+                            kFlatTrack6x6Seq33, kFlatTrack6x6Seq34, kFlatTrack6x6Seq35 } },         // idx 30-35: row 5
     };
 
     constexpr auto kTEDFlatTrack2x4 = TrackElementDescriptor{

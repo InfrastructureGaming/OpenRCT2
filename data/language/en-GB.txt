@@ -3830,3 +3830,4 @@ STR_7030    :{WINDOW_COLOUR_2}Guests entertained: {BLACK}{COMMA32}
 STR_7100    :Tilt-A-Whirl
 STR_7101    :A spinning circular platform with independently rotating gondola cars.
 STR_7102    :Base size 5 × 5
+STR_7103    :Base size 6 × 6
