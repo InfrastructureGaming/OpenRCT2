@@ -23,6 +23,27 @@ struct TopSpinTimeToSpriteMap
 
 extern const TopSpinTimeToSpriteMap* kTopSpinTimeToSpriteMaps[];
 
+// A phase: a time-indexed sequence of raw flatRideAnimationFrame values into the
+// ride's combined FlatRideRotationDescriptor::FramesPerDir sprite sheet, terminated
+// by 0xFF. Used by Vehicle::UpdateRotatingGeneric() for rides whose
+// FlatRideRotationDescriptor::Programs is non-null.
+struct FlatRideAnimationPhase
+{
+    const uint8_t* TimeToSpriteMap = nullptr;
+    uint8_t NextPhase = 0;
+    bool RepeatUntilRotationsComplete = false;
+    bool IsFinalPhase = false;
+};
+
+// A selectable animation program: an ordered/looping graph of phases.
+struct FlatRideAnimationProgram
+{
+    const FlatRideAnimationPhase* Phases = nullptr;
+    uint8_t NumPhases = 0;
+};
+
+extern const FlatRideAnimationProgram kTiltAWhirlPrograms[];
+
 extern const uint8_t MotionSimulatorTimeToSpriteMap[];
 extern const int32_t MotionSimulatorTimeToSpriteMapCount;
 

@@ -802,6 +802,13 @@ void Vehicle::UpdateWaitingToDepart()
             SetState(Status::rotating);
             NumRotations = 0;
             current_time = -1;
+            {
+                const auto& rotation = curRide->getRideTypeDescriptor().FlatRideRotation;
+                if (rotation.Programs != nullptr && rotation.NumPrograms > 0)
+                {
+                    var_C0 = curRide->operationOption % rotation.NumPrograms;
+                }
+            }
             UpdateRotating();
             break;
         case RideMode::filmAvengingAviators:

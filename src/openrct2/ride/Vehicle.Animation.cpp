@@ -256,6 +256,13 @@ void Vehicle::UpdateRotating()
     if (curRide == nullptr)
         return;
 
+    const auto& rtd = GetRideTypeDescriptor(curRide->type);
+    if (rtd.FlatRideRotation.Programs != nullptr)
+    {
+        UpdateRotatingGeneric();
+        return;
+    }
+
     auto rideEntry = GetRideEntry();
     if (rideEntry == nullptr)
     {
@@ -323,8 +330,105 @@ void Vehicle::UpdateRotating()
         }
     }
 
-    const auto& rtd = GetRideTypeDescriptor(curRide->type);
     rtd.UpdateRotating(*this);
+}
+
+/**
+ * Generalized version of UpdateRotating() for ride types whose
+ * FlatRideRotationDescriptor::Programs is non-null: walks an N-phase, possibly
+ * player-selectable animation graph instead of the hardcoded Start/Loop/End
+ * MerryGoRound tables. var_C0 holds the active program index (selected from
+ * ride.operationOption when entering Status::rotating, see
+ * Vehicle::UpdateWaitingToDepart). var_C0/sub_state are bounds-checked here since
+ * var_C0 aliases other per-vehicle scratch fields used outside Status::rotating.
+ */
+void Vehicle::UpdateRotatingGeneric()
+{
+    if (_vehicleBreakdown == Breakdown::safetyCutOut)
+        return;
+
+    auto curRide = GetRide();
+    if (curRide == nullptr)
+        return;
+
+    const auto& rtd = GetRideTypeDescriptor(curRide->type);
+    const auto& rotation = rtd.FlatRideRotation;
+    if (rotation.Programs == nullptr || rotation.NumPrograms == 0)
+        return;
+
+    if (var_C0 >= rotation.NumPrograms)
+        var_C0 = 0;
+    const auto& program = rotation.Programs[var_C0];
+    if (program.Phases == nullptr || program.NumPhases == 0)
+        return;
+
+    if (sub_state >= program.NumPhases)
+        sub_state = 0;
+    const auto& phase = program.Phases[sub_state];
+
+    uint16_t time = current_time;
+    if (_vehicleBreakdown == Breakdown::controlFailure)
+    {
+        time += (curRide->breakdownSoundModifier >> 6) + 1;
+    }
+    time++;
+
+    uint8_t sprite = phase.TimeToSpriteMap[time];
+    if (sprite != 0xFF)
+    {
+        current_time = time;
+        if (sprite == flatRideAnimationFrame)
+            return;
+        flatRideAnimationFrame = sprite;
+        invalidate();
+        return;
+    }
+
+    current_time = -1;
+
+    // Mirrors UpdateRotatingDefault: NumRotations is a single counter shared across every
+    // phase in the program, incremented on every phase completion and only reset once, at
+    // dispatch (Vehicle::UpdateWaitingToDepart). A phase with RepeatUntilRotationsComplete
+    // replays itself until NumRotations reaches ride.rotations; other phases always advance
+    // to NextPhase after a single pass. During a controlFailure breakdown, replay the
+    // current phase regardless (matches the original getting "stuck" mid-cycle).
+    NumRotations++;
+
+    bool advance;
+    if (_vehicleBreakdown == Breakdown::controlFailure)
+    {
+        advance = false;
+    }
+    else if (!phase.RepeatUntilRotationsComplete)
+    {
+        advance = true;
+    }
+    else
+    {
+        advance = true;
+        if (curRide->status != RideStatus::closed && NumRotations + 1 < curRide->rotations)
+        {
+            advance = false;
+        }
+    }
+
+    if (!advance)
+    {
+        UpdateRotatingGeneric();
+        return;
+    }
+
+    sub_state = phase.NextPhase;
+
+    if (phase.IsFinalPhase)
+    {
+        SetState(Status::arriving);
+        var_C0 = 0;
+        NumRotations = 0;
+        return;
+    }
+
+    UpdateRotatingGeneric();
 }
 
 /**

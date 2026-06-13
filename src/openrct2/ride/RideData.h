@@ -34,6 +34,7 @@
 #include "ShopItem.h"
 #include "TrackStyle.h"
 #include "Vehicle.h"
+#include "VehicleData.h"
 #include "ted/TrackGroup.h"
 
 enum class ResearchCategory : uint8_t;
@@ -519,6 +520,13 @@ struct FlatRideRotationDescriptor
     uint8_t  InvalidationHalfWidth   = 0;
     uint8_t  InvalidationHeightAbove = 0;
     uint8_t  InvalidationHeightBelow = 0;
+
+    // Multi-phase / multi-program animation (see Vehicle::UpdateRotatingGeneric).
+    // nullptr = legacy 3-phase Start/Loop/End behaviour via UpdateRotatingDefault.
+    // When set, FramesPerDir is the TOTAL combined frame count across every phase
+    // of every program (phases/programs may share/overlap frame ranges).
+    const FlatRideAnimationProgram* Programs = nullptr;
+    uint8_t NumPrograms = 0;
 };
 
 struct RideTypeDescriptor

@@ -371,6 +371,25 @@ const uint8_t* kMerryGoRoundTimeToSpriteMaps[] = {
     kMerryGoRoundAnimationEnd,
 };
 
+// Regression-safety replication of the hardcoded Start/Loop/End walk above, expressed
+// as a FlatRideAnimationProgram for Vehicle::UpdateRotatingGeneric(). Used by TiltAWhirl
+// to validate the generalized path against this known-good baseline before any
+// multi-phase/multi-program ride is authored.
+// Every phase completion increments the shared, never-reset-mid-cycle NumRotations
+// counter (see UpdateRotatingGeneric). Only the Loop phase checks it: Start always
+// advances to Loop after one pass, Loop replays itself until NumRotations reaches
+// ride.rotations and then advances to End, and End always advances to arriving -
+// matching UpdateRotatingDefault's Start->Loop(xN)->End walk for these tables.
+static constexpr FlatRideAnimationPhase kTiltAWhirlPhases[] = {
+    { kMerryGoRoundAnimationStart, 1, false, false }, // 0: Start -> Loop
+    { kMerryGoRoundAnimationLoop, 2, true, false },   // 1: Loop, repeats until ride.rotations -> End
+    { kMerryGoRoundAnimationEnd, 0, false, true },    // 2: End -> arriving
+};
+
+const FlatRideAnimationProgram kTiltAWhirlPrograms[] = {
+    { kTiltAWhirlPhases, 3 },
+};
+
 /** rct2: 0x009A12EC */
 static constexpr TopSpinTimeToSpriteMap kTopSpinAnimationBeginners[] = {
     {  0,  0 }, {  0,  0 }, {  0,  0 }, {  0,  0 }, {  0,  0 }, {  0,  0 }, {  0,  0 },

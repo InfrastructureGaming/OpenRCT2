@@ -84,6 +84,11 @@ constexpr RideTypeDescriptor TiltAWhirlRTD =
         .InvalidationHalfWidth   = 255,
         .InvalidationHeightAbove = 170,
         .InvalidationHeightBelow = 170,
+        // Regression replication of the legacy Start/Loop/End MerryGoRound walk via
+        // UpdateRotatingGeneric (see VehicleData.cpp kTiltAWhirlPrograms) - validates the
+        // generalized multi-phase/multi-program path before any new ride adopts it.
+        .Programs = kTiltAWhirlPrograms,
+        .NumPrograms = 1,
     },
 };
 } // namespace OpenRCT2
