@@ -48,7 +48,7 @@ static void PaintGenericRotatingStructure(
     if (baseImageId == 0)
         return;
 
-    uint8_t animFrame = 0;
+    uint16_t animFrame = 0;
     Vehicle* vehicle = nullptr;
     if (ride.flags.has(RideFlag::onTrack) && !ride.vehicles[0].IsNull())
     {

@@ -159,7 +159,7 @@ struct Vehicle : OpenRCT2::EntityBase
     union
     {
         VehiclePitch pitch;
-        uint8_t flatRideAnimationFrame;
+        uint16_t flatRideAnimationFrame;
     };
     union
     {

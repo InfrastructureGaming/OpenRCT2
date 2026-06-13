@@ -25,14 +25,20 @@ extern const TopSpinTimeToSpriteMap* kTopSpinTimeToSpriteMaps[];
 
 // A phase: a time-indexed sequence of raw flatRideAnimationFrame values into the
 // ride's combined FlatRideRotationDescriptor::FramesPerDir sprite sheet, terminated
-// by 0xFF. Used by Vehicle::UpdateRotatingGeneric() for rides whose
+// by 0xFFFF. Used by Vehicle::UpdateRotatingGeneric() for rides whose
 // FlatRideRotationDescriptor::Programs is non-null.
 struct FlatRideAnimationPhase
 {
-    const uint8_t* TimeToSpriteMap = nullptr;
+    const uint16_t* TimeToSpriteMap = nullptr;
     uint8_t NextPhase = 0;
     bool RepeatUntilRotationsComplete = false;
     bool IsFinalPhase = false;
+    // Zero NumRotations when entering this phase, giving it an independent repeat
+    // budget against ride.rotations. Needed when a program has more than one
+    // RepeatUntilRotationsComplete phase (NumRotations is otherwise a single counter
+    // shared across the whole program). Default false preserves kTiltAWhirlPhases'
+    // single-counter behaviour exactly.
+    bool ResetRotationsOnEntry = false;
 };
 
 // A selectable animation program: an ordered/looping graph of phases.
@@ -43,6 +49,7 @@ struct FlatRideAnimationProgram
 };
 
 extern const FlatRideAnimationProgram kTiltAWhirlPrograms[];
+extern const FlatRideAnimationProgram kFreestylePrograms[];
 
 extern const uint8_t MotionSimulatorTimeToSpriteMap[];
 extern const int32_t MotionSimulatorTimeToSpriteMapCount;

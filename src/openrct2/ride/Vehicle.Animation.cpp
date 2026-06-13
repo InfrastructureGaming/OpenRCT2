@@ -373,8 +373,8 @@ void Vehicle::UpdateRotatingGeneric()
     }
     time++;
 
-    uint8_t sprite = phase.TimeToSpriteMap[time];
-    if (sprite != 0xFF)
+    uint16_t sprite = phase.TimeToSpriteMap[time];
+    if (sprite != 0xFFFF)
     {
         current_time = time;
         if (sprite == flatRideAnimationFrame)
@@ -427,6 +427,9 @@ void Vehicle::UpdateRotatingGeneric()
         NumRotations = 0;
         return;
     }
+
+    if (program.Phases[sub_state].ResetRotationsOnEntry)
+        NumRotations = 0;
 
     UpdateRotatingGeneric();
 }

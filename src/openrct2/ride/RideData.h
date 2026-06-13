@@ -505,7 +505,7 @@ constexpr RtdFlags kRtdFlagsCommonCoasterNonAlt = { RtdFlag::showInTrackDesigner
 struct FlatRideRotationDescriptor
 {
     uint32_t BaseImageId      = 0;   // first sprite in the sheet
-    uint8_t  FramesPerDir     = 0;   // animation frames per direction
+    uint16_t FramesPerDir     = 0;   // animation frames per direction
     uint8_t  RiderFrameStride = 0;   // number of gondola rider-pair sheets (0 = no riders)
     int8_t   DrawOffsetX      = 0;   // pixel offset from tile centre
     int8_t   DrawOffsetY      = 0;

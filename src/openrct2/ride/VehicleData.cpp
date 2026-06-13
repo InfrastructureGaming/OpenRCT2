@@ -9,6 +9,7 @@
 
 #include "VehicleData.h"
 
+#include <array>
 #include <iterator>
 
 // clang-format off
@@ -371,6 +372,24 @@ const uint8_t* kMerryGoRoundTimeToSpriteMaps[] = {
     kMerryGoRoundAnimationEnd,
 };
 
+// FlatRideAnimationPhase::TimeToSpriteMap is now uint16_t* (0xFFFF terminator) to support
+// FramesPerDir > 255 (see Freestyle below). kMerryGoRoundAnimationStart/Loop/End stay
+// uint8_t[] for kMerryGoRoundTimeToSpriteMaps (real Merry-Go-Round rides, legacy path),
+// so derive widened uint16_t copies for kTiltAWhirlPhases via this helper, remapping the
+// 0xFF terminator to 0xFFFF. Avoids hand-transcribing ~300 values.
+template <std::size_t N>
+constexpr std::array<uint16_t, N> WidenAnimationFrameMap(const uint8_t (&src)[N])
+{
+    std::array<uint16_t, N> out{};
+    for (std::size_t i = 0; i < N; i++)
+        out[i] = (src[i] == 0xFF) ? 0xFFFF : src[i];
+    return out;
+}
+
+static constexpr auto kTiltAWhirlAnimationStart = WidenAnimationFrameMap(kMerryGoRoundAnimationStart);
+static constexpr auto kTiltAWhirlAnimationLoop  = WidenAnimationFrameMap(kMerryGoRoundAnimationLoop);
+static constexpr auto kTiltAWhirlAnimationEnd   = WidenAnimationFrameMap(kMerryGoRoundAnimationEnd);
+
 // Regression-safety replication of the hardcoded Start/Loop/End walk above, expressed
 // as a FlatRideAnimationProgram for Vehicle::UpdateRotatingGeneric(). Used by TiltAWhirl
 // to validate the generalized path against this known-good baseline before any
@@ -381,13 +400,53 @@ const uint8_t* kMerryGoRoundTimeToSpriteMaps[] = {
 // ride.rotations and then advances to End, and End always advances to arriving -
 // matching UpdateRotatingDefault's Start->Loop(xN)->End walk for these tables.
 static constexpr FlatRideAnimationPhase kTiltAWhirlPhases[] = {
-    { kMerryGoRoundAnimationStart, 1, false, false }, // 0: Start -> Loop
-    { kMerryGoRoundAnimationLoop, 2, true, false },   // 1: Loop, repeats until ride.rotations -> End
-    { kMerryGoRoundAnimationEnd, 0, false, true },    // 2: End -> arriving
+    { kTiltAWhirlAnimationStart.data(), 1, false, false }, // 0: Start -> Loop
+    { kTiltAWhirlAnimationLoop.data(), 2, true, false },   // 1: Loop, repeats until ride.rotations -> End
+    { kTiltAWhirlAnimationEnd.data(), 0, false, true },    // 2: End -> arriving
 };
 
 const FlatRideAnimationProgram kTiltAWhirlPrograms[] = {
     { kTiltAWhirlPhases, 3 },
+};
+
+// Freestyle's "Long Program": 1024 combined frames/dir, 8 unique phases / 9 graph nodes.
+// Ground Spin (phases 2 & 6) is the only reused phase (same frame range, played forward
+// both times); Tilt-Up/Tilt-Down/Tilt Spin are unique two-axis-motion sprite sets. The
+// three RepeatUntilRotationsComplete phases each get an independent ride.rotations budget
+// via ResetRotationsOnEntry (see UpdateRotatingGeneric).
+template <uint16_t Start, uint16_t Count>
+constexpr std::array<uint16_t, static_cast<std::size_t>(Count) + 1> MakeSequentialFrameMap()
+{
+    std::array<uint16_t, static_cast<std::size_t>(Count) + 1> out{};
+    for (uint16_t i = 0; i < Count; i++)
+        out[i] = static_cast<uint16_t>(Start + i);
+    out[Count] = 0xFFFF;
+    return out;
+}
+
+static constexpr auto kFreestyleRestraintsClose = MakeSequentialFrameMap<0, 64>();
+static constexpr auto kFreestyleSpinUp          = MakeSequentialFrameMap<64, 128>();
+static constexpr auto kFreestyleGroundSpin      = MakeSequentialFrameMap<192, 128>();
+static constexpr auto kFreestyleTiltUp          = MakeSequentialFrameMap<320, 128>();
+static constexpr auto kFreestyleTiltSpin        = MakeSequentialFrameMap<448, 256>();
+static constexpr auto kFreestyleTiltDown        = MakeSequentialFrameMap<704, 128>();
+static constexpr auto kFreestyleSpinDown        = MakeSequentialFrameMap<832, 128>();
+static constexpr auto kFreestyleRestraintsOpen  = MakeSequentialFrameMap<960, 64>();
+
+static constexpr FlatRideAnimationPhase kFreestylePhases[] = {
+    { kFreestyleRestraintsClose.data(), 1, false, false, false }, // 0: Restraints Close -> Spin-Up
+    { kFreestyleSpinUp.data(),          2, false, false, false }, // 1: Spin-Up -> Ground Spin (rise)
+    { kFreestyleGroundSpin.data(),      3, true,  false, true  }, // 2: Ground Spin (rise), repeats -> Tilt-Up
+    { kFreestyleTiltUp.data(),          4, false, false, false }, // 3: Tilt-Up -> Tilt Spin
+    { kFreestyleTiltSpin.data(),        5, true,  false, true  }, // 4: Tilt Spin, repeats -> Tilt-Down
+    { kFreestyleTiltDown.data(),        6, false, false, false }, // 5: Tilt-Down -> Ground Spin (fall)
+    { kFreestyleGroundSpin.data(),      7, true,  false, true  }, // 6: Ground Spin (fall), repeats -> Spin-Down
+    { kFreestyleSpinDown.data(),        8, false, false, false }, // 7: Spin-Down -> Restraints Open
+    { kFreestyleRestraintsOpen.data(),  0, false, true,  false }, // 8: Restraints Open -> arriving (final)
+};
+
+const FlatRideAnimationProgram kFreestylePrograms[] = {
+    { kFreestylePhases, 9 },
 };
 
 /** rct2: 0x009A12EC */
