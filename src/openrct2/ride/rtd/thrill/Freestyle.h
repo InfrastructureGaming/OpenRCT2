@@ -75,7 +75,11 @@ constexpr RideTypeDescriptor FreestyleRTD =
     .FlatRideRotation =
     {
         .FramesPerDir = 3600,
-        .RiderFrameStride = 12,   // 12 gondola pairs = 24 seats
+        // TEMPORARY: 0 disables rider-overlay drawing entirely (no out-of-bounds reads
+        // into images.dat while rider sprites don't exist yet). This is the "Core-only"
+        // proof-of-concept milestone - restore to 12 (12 gondola pairs = 24 seats) once
+        // the 12 rider sprite-sets are rendered and packaged.
+        .RiderFrameStride = 0,
         // Placeholders carried over from Tilt-A-Whirl; re-derive once Freestyle's sprites
         // are rendered and their on-screen extents are known.
         .InvalidationHalfWidth   = 255,
