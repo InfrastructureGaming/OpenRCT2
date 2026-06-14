@@ -33,9 +33,10 @@ constexpr RideTypeDescriptor FreestyleRTD =
                      RtdFlag::interestingToLookAt),
     .RideModes = EnumsToFlags(RideMode::rotation),
     .DefaultMode = RideMode::rotation,
-    // Controls ride.rotations, the shared repeat budget consumed independently by each of
-    // the Long Program's three RepeatUntilRotationsComplete phases (see kFreestylePhases).
-    .OperatingSettings = { 3, 15 },
+    // Selects which single-pass program (see kFreestylePrograms) plays for the next ride
+    // cycle: ride.operationOption % NumPrograms. Currently only the Long Program exists
+    // (NumPrograms=1, so this is a no-op); widen to {0,1} when the Short Program is added.
+    .OperatingSettings = { 0, 0 },
     .Naming = { STR_RIDE_NAME_FREESTYLE, STR_RIDE_DESCRIPTION_FREESTYLE },
     .NameConvention = { RideComponentType::Car, RideComponentType::Structure, RideComponentType::Station },
     .availableBreakdowns = { Breakdown::safetyCutOut },
@@ -65,23 +66,24 @@ constexpr RideTypeDescriptor FreestyleRTD =
         0,
         false,
         {
+            // operationOption selects the program (currently always 0, see
+            // OperatingSettings); no-op until more programs exist and this is tuned.
             { RatingsModifierType::BonusOperationOption, 0, 10, 20, 20 },
             { RatingsModifierType::BonusScenery,         0, 11155, 0, 0 },
         },
     },
     .FlatRideRotation =
     {
-        .FramesPerDir = 1024,
+        .FramesPerDir = 3600,
         .RiderFrameStride = 12,   // 12 gondola pairs = 24 seats
         // Placeholders carried over from Tilt-A-Whirl; re-derive once Freestyle's sprites
         // are rendered and their on-screen extents are known.
         .InvalidationHalfWidth   = 255,
         .InvalidationHeightAbove = 170,
         .InvalidationHeightBelow = 170,
-        // The 9-node "Long Program": Restraints Close -> Spin-Up -> Ground Spin (rise,
-        // repeats) -> Tilt-Up -> Tilt Spin (repeats) -> Tilt-Down -> Ground Spin (fall,
-        // repeats) -> Spin-Down -> Restraints Open (final). See VehicleData.cpp
-        // kFreestylePhases for the per-phase frame ranges.
+        // Long Program only (frames 0-3599, single-pass). See VehicleData.cpp
+        // kFreestylePrograms; the Short Program will be appended as operationOption 1
+        // once rendered.
         .Programs = kFreestylePrograms,
         .NumPrograms = 1,
     },

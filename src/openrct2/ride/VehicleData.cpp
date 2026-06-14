@@ -409,11 +409,6 @@ const FlatRideAnimationProgram kTiltAWhirlPrograms[] = {
     { kTiltAWhirlPhases, 3 },
 };
 
-// Freestyle's "Long Program": 1024 combined frames/dir, 8 unique phases / 9 graph nodes.
-// Ground Spin (phases 2 & 6) is the only reused phase (same frame range, played forward
-// both times); Tilt-Up/Tilt-Down/Tilt Spin are unique two-axis-motion sprite sets. The
-// three RepeatUntilRotationsComplete phases each get an independent ride.rotations budget
-// via ResetRotationsOnEntry (see UpdateRotatingGeneric).
 template <uint16_t Start, uint16_t Count>
 constexpr std::array<uint16_t, static_cast<std::size_t>(Count) + 1> MakeSequentialFrameMap()
 {
@@ -424,29 +419,19 @@ constexpr std::array<uint16_t, static_cast<std::size_t>(Count) + 1> MakeSequenti
     return out;
 }
 
-static constexpr auto kFreestyleRestraintsClose = MakeSequentialFrameMap<0, 64>();
-static constexpr auto kFreestyleSpinUp          = MakeSequentialFrameMap<64, 128>();
-static constexpr auto kFreestyleGroundSpin      = MakeSequentialFrameMap<192, 128>();
-static constexpr auto kFreestyleTiltUp          = MakeSequentialFrameMap<320, 128>();
-static constexpr auto kFreestyleTiltSpin        = MakeSequentialFrameMap<448, 256>();
-static constexpr auto kFreestyleTiltDown        = MakeSequentialFrameMap<704, 128>();
-static constexpr auto kFreestyleSpinDown        = MakeSequentialFrameMap<832, 128>();
-static constexpr auto kFreestyleRestraintsOpen  = MakeSequentialFrameMap<960, 64>();
+// Freestyle's "Long Program": a single continuous 3600-frame sequence (restraints
+// close/open baked in), frame 3599 visually matches frame 0 so the ride starts and ends
+// in the same configuration. Plays through once and ends the cycle (IsFinalPhase). The
+// Short Program (~2600 frames) will become operationOption 1 once rendered - append its
+// frame range after this one and bump NumPrograms to 2.
+static constexpr auto kFreestyleLongProgramFrames = MakeSequentialFrameMap<0, 3600>();
 
-static constexpr FlatRideAnimationPhase kFreestylePhases[] = {
-    { kFreestyleRestraintsClose.data(), 1, false, false, false }, // 0: Restraints Close -> Spin-Up
-    { kFreestyleSpinUp.data(),          2, false, false, false }, // 1: Spin-Up -> Ground Spin (rise)
-    { kFreestyleGroundSpin.data(),      3, true,  false, true  }, // 2: Ground Spin (rise), repeats -> Tilt-Up
-    { kFreestyleTiltUp.data(),          4, false, false, false }, // 3: Tilt-Up -> Tilt Spin
-    { kFreestyleTiltSpin.data(),        5, true,  false, true  }, // 4: Tilt Spin, repeats -> Tilt-Down
-    { kFreestyleTiltDown.data(),        6, false, false, false }, // 5: Tilt-Down -> Ground Spin (fall)
-    { kFreestyleGroundSpin.data(),      7, true,  false, true  }, // 6: Ground Spin (fall), repeats -> Spin-Down
-    { kFreestyleSpinDown.data(),        8, false, false, false }, // 7: Spin-Down -> Restraints Open
-    { kFreestyleRestraintsOpen.data(),  0, false, true,  false }, // 8: Restraints Open -> arriving (final)
+static constexpr FlatRideAnimationPhase kFreestyleLongProgramPhases[] = {
+    { kFreestyleLongProgramFrames.data(), 0, false, true, false },
 };
 
 const FlatRideAnimationProgram kFreestylePrograms[] = {
-    { kFreestylePhases, 9 },
+    { kFreestyleLongProgramPhases, 1 }, // operationOption 0: Long Program (3600 frames)
 };
 
 /** rct2: 0x009A12EC */
