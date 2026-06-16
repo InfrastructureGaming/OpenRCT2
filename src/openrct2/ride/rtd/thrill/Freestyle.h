@@ -16,6 +16,13 @@
 // clang-format off
 namespace OpenRCT2
 {
+// Display names for kFreestylePrograms, shown in the Operating tab's "Sequence" dropdown.
+// Extend in lockstep with kFreestylePrograms/NumPrograms/OperatingSettings.MaxValue when
+// the Short Program and Carnival are added.
+static constexpr StringId kFreestyleProgramNames[] = {
+    STR_FREESTYLE_PROGRAM_LONG, // operationOption 0
+};
+
 constexpr RideTypeDescriptor FreestyleRTD =
 {
     .Category = RideCategory::thrill,
@@ -61,7 +68,7 @@ constexpr RideTypeDescriptor FreestyleRTD =
     .RatingsData =
     {
         RatingsCalculationType::FlatRide,
-        { RideRating::make(2, 45), RideRating::make(1, 60), RideRating::make(2, 60) },
+        { RideRating::make(5, 64), RideRating::make(6, 80), RideRating::make(2, 60) },
         16,
         0,
         false,
@@ -75,11 +82,8 @@ constexpr RideTypeDescriptor FreestyleRTD =
     .FlatRideRotation =
     {
         .FramesPerDir = 3600,
-        // TEMPORARY: 0 disables rider-overlay drawing entirely (no out-of-bounds reads
-        // into images.dat while rider sprites don't exist yet). This is the "Core-only"
-        // proof-of-concept milestone - restore to 12 (12 gondola pairs = 24 seats) once
-        // the 12 rider sprite-sets are rendered and packaged.
-        .RiderFrameStride = 0,
+        // 12 gondola pairs = 24 seats, all rider sprite-sets rendered and packaged.
+        .RiderFrameStride = 12,
         // Placeholders carried over from Tilt-A-Whirl; re-derive once Freestyle's sprites
         // are rendered and their on-screen extents are known.
         .InvalidationHalfWidth   = 255,
@@ -90,6 +94,7 @@ constexpr RideTypeDescriptor FreestyleRTD =
         // once rendered.
         .Programs = kFreestylePrograms,
         .NumPrograms = 1,
+        .ProgramNames = kFreestyleProgramNames,
     },
 };
 } // namespace OpenRCT2

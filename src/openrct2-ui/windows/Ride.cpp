@@ -3168,21 +3168,38 @@ namespace OpenRCT2::Ui::Windows
             if (ride == nullptr)
                 return;
 
-            auto availableModes = ride->getAvailableModes();
+            const auto* programNames = ride->getRideTypeDescriptor().FlatRideRotation.ProgramNames;
 
             // Create dropdown list
             auto numAvailableModes = 0;
             auto checkedIndex = -1;
-            for (auto i = 0; i < static_cast<uint8_t>(RideMode::count); i++)
+            if (programNames != nullptr)
             {
-                if (availableModes & (1uLL << i))
+                auto numPrograms = ride->getRideTypeDescriptor().FlatRideRotation.NumPrograms;
+                for (auto i = 0; i < numPrograms; i++)
                 {
-                    gDropdown.items[numAvailableModes] = Dropdown::MenuLabel(kRideModeNames[i]);
+                    gDropdown.items[numAvailableModes] = Dropdown::MenuLabel(programNames[i]);
 
-                    if (ride->mode == static_cast<RideMode>(i))
+                    if (ride->operationOption == i)
                         checkedIndex = numAvailableModes;
 
                     numAvailableModes++;
+                }
+            }
+            else
+            {
+                auto availableModes = ride->getAvailableModes();
+                for (auto i = 0; i < static_cast<uint8_t>(RideMode::count); i++)
+                {
+                    if (availableModes & (1uLL << i))
+                    {
+                        gDropdown.items[numAvailableModes] = Dropdown::MenuLabel(kRideModeNames[i]);
+
+                        if (ride->mode == static_cast<RideMode>(i))
+                            checkedIndex = numAvailableModes;
+
+                        numAvailableModes++;
+                    }
                 }
             }
 
@@ -3433,6 +3450,13 @@ namespace OpenRCT2::Ui::Windows
             {
                 case WIDX_MODE_DROPDOWN:
                 {
+                    if (ride->getRideTypeDescriptor().FlatRideRotation.ProgramNames != nullptr)
+                    {
+                        SetOperatingSetting(
+                            rideId, GameActions::RideSetSetting::operation, static_cast<uint8_t>(dropdownIndex));
+                        break;
+                    }
+
                     RideMode rideMode = RideMode::nullMode;
                     auto availableModes = ride->getAvailableModes();
                     auto modeInDropdownIndex = -1;
@@ -3525,7 +3549,7 @@ namespace OpenRCT2::Ui::Windows
 
         void OperatingOnPrepareDraw()
         {
-            StringId format, caption, tooltip;
+            StringId format, caption = kStringIdEmpty, tooltip = kStringIdEmpty;
 
             auto ride = GetRide(rideId);
             if (ride == nullptr)
@@ -3605,8 +3629,12 @@ namespace OpenRCT2::Ui::Windows
                 widgets[WIDX_SYNCHRONISE_WITH_ADJACENT_STATIONS_CHECKBOX].type = WidgetType::empty;
             }
 
-            // Mode
-            widgets[WIDX_MODE].text = kRideModeNames[EnumValue(ride->mode)];
+            // Mode (or, for rides with named programs, the "Sequence" dropdown)
+            const auto* programNames = ride->getRideTypeDescriptor().FlatRideRotation.ProgramNames;
+            if (programNames != nullptr)
+                widgets[WIDX_MODE].text = programNames[ride->operationOption];
+            else
+                widgets[WIDX_MODE].text = kRideModeNames[EnumValue(ride->mode)];
 
             // Waiting
             widgets[WIDX_LOAD].text = VehicleLoadNames[(ride->departFlags & RIDE_DEPART_WAIT_FOR_LOAD_MASK)];
@@ -3664,7 +3692,12 @@ namespace OpenRCT2::Ui::Windows
             auto multiplier = ride->getRideTypeDescriptor().OperatingSettings.OperatingSettingMultiplier;
             uint16_t tweakValue = static_cast<uint16_t>(ride->operationOption) * multiplier;
 
-            switch (ride->mode)
+            if (programNames != nullptr)
+            {
+                // Sequence is selected via the Mode dropdown above; no tweak row needed.
+                format = kStringIdEmpty;
+            }
+            else switch (ride->mode)
             {
                 case RideMode::poweredLaunchPasstrough:
                 case RideMode::poweredLaunch:

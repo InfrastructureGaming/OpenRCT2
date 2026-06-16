@@ -3833,3 +3833,4 @@ STR_7102    :Base size 5 × 5
 STR_7103    :Base size 6 × 6
 STR_7104    :Freestyle
 STR_7105    :A compound-rotation ride that spins, tilts and spins riders through a long, varied program.
+STR_7106    :Long Program

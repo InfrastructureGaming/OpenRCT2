@@ -257,6 +257,13 @@ void TextureCache::EnlargeAtlasesTexture(GLuint newEntries)
         // Initial capacity will be 12 which covers most cases of a fully visible park.
         _atlasesTextureCapacity = (_atlasesTextureCapacity + 6) << 1uL;
 
+        // The doubling formula can overshoot GL_MAX_ARRAY_TEXTURE_LAYERS (captured in
+        // _atlasesTextureIndicesLimit). Clamping here prevents glTexImage3D from being
+        // called with a depth that exceeds hardware limits, which would cause the NVIDIA
+        // driver to crash with a write AV rather than returning a GL error.
+        if (static_cast<GLint>(_atlasesTextureCapacity) > _atlasesTextureIndicesLimit)
+            _atlasesTextureCapacity = static_cast<GLuint>(_atlasesTextureIndicesLimit);
+
         glCall(glBindTexture, GL_TEXTURE_2D_ARRAY, _atlasesTexture);
         glCall(
             glTexImage3D, GL_TEXTURE_2D_ARRAY, 0, GL_R8UI, _atlasesTextureDimensions, _atlasesTextureDimensions,

@@ -527,6 +527,11 @@ struct FlatRideRotationDescriptor
     // of every program (phases/programs may share/overlap frame ranges).
     const FlatRideAnimationProgram* Programs = nullptr;
     uint8_t NumPrograms = 0;
+
+    // Display names for each program (Programs[i]), size == NumPrograms. When set, the
+    // ride window's Operating tab shows a "Sequence" dropdown here (driving
+    // ride.operationOption) instead of the Mode dropdown + Number-of-Rotations spinner.
+    const StringId* ProgramNames = nullptr;
 };
 
 struct RideTypeDescriptor
