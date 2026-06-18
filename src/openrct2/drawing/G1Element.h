@@ -30,6 +30,12 @@ namespace OpenRCT2
         isPalette,         // Image data is a sequence of palette entries R8G8B8
         hasZoomSprite,     // Use a different sprite for higher zoom levels
         noZoomDraw,        // Does not get drawn at higher zoom levels (only zoom 0)
+        // Wide RLE format: yOffsets table uses uint32_t (4 bytes/entry) instead of uint16_t,
+        // and each run header uses a 3-byte layout [NumPixels:u8][OffsetX_lo:u8][OffsetX_hi:u8]
+        // instead of the 2-byte [NumPixels:u8][OffsetX:u8]. Lifts both the 65 KB row-offset
+        // cap and the 255-column run-start cap, enabling sprites wider or taller than 256 px.
+        // Only set by ImageImporter::EncodeRLEWide(); always paired with hasRLECompression.
+        wideRLE,
     };
     using G1Flags = FlagHolder<uint16_t, G1Flag>;
 

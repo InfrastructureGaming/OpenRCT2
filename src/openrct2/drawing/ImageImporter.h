@@ -83,6 +83,7 @@ namespace OpenRCT2::Drawing
         static std::vector<int32_t> GetPixels(const Image& image, const ImageImportMeta& meta);
         static std::vector<uint8_t> EncodeRaw(const int32_t* pixels, ScreenSize size);
         static std::vector<uint8_t> EncodeRLE(const int32_t* pixels, ScreenSize size);
+        static std::vector<uint8_t> EncodeRLEWide(const int32_t* pixels, ScreenSize size);
 
         static int32_t CalculatePaletteIndex(
             ImportMode mode, int16_t* rgbaSrc, int32_t x, int32_t y, int32_t width, int32_t height);

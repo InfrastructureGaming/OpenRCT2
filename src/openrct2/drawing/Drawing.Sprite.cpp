@@ -1211,6 +1211,28 @@ size_t G1CalculateDataSize(const G1Element* g1)
             return 0;
         }
 
+        if (g1->flags.has(G1Flag::wideRLE))
+        {
+            // Wide RLE: 4-byte yOffset table entries, 3-byte run headers [NumPixels][OffsetX_lo][OffsetX_hi]
+            auto idx = static_cast<size_t>(g1->height - 1) * 4;
+            uint32_t offset = static_cast<uint32_t>(g1->offset[idx])
+                            | (static_cast<uint32_t>(g1->offset[idx + 1]) << 8)
+                            | (static_cast<uint32_t>(g1->offset[idx + 2]) << 16)
+                            | (static_cast<uint32_t>(g1->offset[idx + 3]) << 24);
+            uint8_t* ptr = g1->offset + offset;
+            bool endOfLine = false;
+            do
+            {
+                uint8_t chunk0 = *ptr++;
+                ptr++; // OffsetX_lo
+                ptr++; // OffsetX_hi
+                uint8_t chunkSize = chunk0 & 0x7F;
+                ptr += chunkSize;
+                endOfLine = (chunk0 & 0x80) != 0;
+            } while (!endOfLine);
+            return ptr - g1->offset;
+        }
+
         auto idx = (g1->height - 1) * 2;
         uint16_t offset = g1->offset[idx] | (g1->offset[idx + 1] << 8);
         uint8_t* ptr = g1->offset + offset;

@@ -29,19 +29,17 @@ namespace OpenRCT2::Drawing
         if (meta.srcSize.height == 0)
             meta.srcSize.height = image.Height;
 
-        if (meta.srcSize.width > 256 || meta.srcSize.height > 256)
-        {
-            throw std::invalid_argument("Only images 256x256 or less are supported.");
-        }
-
         if (meta.palette == Palette::KeepIndices && image.Depth != 8)
         {
             throw std::invalid_argument("Image is not paletted, it has bit depth of " + std::to_string(image.Depth));
         }
         const bool isRLE = meta.importFlags.has(ImportFlag::rle);
+        const bool isWide = isRLE && (meta.srcSize.width > 256 || meta.srcSize.height > 256);
 
         auto pixels = GetPixels(image, meta);
-        auto buffer = isRLE ? EncodeRLE(pixels.data(), meta.srcSize) : EncodeRaw(pixels.data(), meta.srcSize);
+        auto buffer = isWide  ? EncodeRLEWide(pixels.data(), meta.srcSize)
+                    : isRLE   ? EncodeRLE(pixels.data(), meta.srcSize)
+                              : EncodeRaw(pixels.data(), meta.srcSize);
 
         G1Element outElement;
         outElement.width = meta.srcSize.width;
@@ -50,6 +48,8 @@ namespace OpenRCT2::Drawing
         outElement.xOffset = meta.offset.x;
         outElement.yOffset = meta.offset.y;
         outElement.zoomedOffset = meta.zoomedOffset;
+        if (isWide)
+            outElement.flags.set(G1Flag::wideRLE);
         if (meta.importFlags.has(ImportFlag::noDrawOnZoom))
             outElement.flags.set(G1Flag::noZoomDraw);
 
@@ -265,6 +265,105 @@ namespace OpenRCT2::Drawing
                         {
                             previousCode->NumPixels |= 0x80;
                             dst -= 2;
+                        }
+                    }
+
+                    startX = 0;
+                    npixels = 0;
+                    pushRun = false;
+                }
+            }
+        }
+
+        auto bufferLength = static_cast<size_t>(dst - buffer.data());
+        buffer.resize(bufferLength);
+        return buffer;
+    }
+
+    std::vector<uint8_t> ImageImporter::EncodeRLEWide(const int32_t* pixels, ScreenSize size)
+    {
+        // Wide RLE format: yOffsets table uses 4 bytes per row (uint32_t) and each run
+        // header is 3 bytes [NumPixels:u8][OffsetX_lo:u8][OffsetX_hi:u8], allowing
+        // run starts beyond column 255 and total row data beyond 65 KB.
+        struct WideRLECode
+        {
+            uint8_t NumPixels{};
+            uint8_t OffsetX_lo{};
+            uint8_t OffsetX_hi{};
+        };
+
+        auto src = pixels;
+        std::vector<uint8_t> buffer((size.height * 4) + (size.width * size.height * 16));
+        std::fill_n(buffer.data(), buffer.size(), 0x00);
+        auto yOffsets = reinterpret_cast<uint32_t*>(buffer.data());
+        auto dst = buffer.data() + (size.height * 4);
+        for (auto y = 0; y < size.height; y++)
+        {
+            yOffsets[y] = static_cast<uint32_t>(dst - buffer.data());
+
+            auto previousCode = static_cast<WideRLECode*>(nullptr);
+            auto currentCode = reinterpret_cast<WideRLECode*>(dst);
+            dst += 3;
+
+            auto startX = 0;
+            auto npixels = 0;
+            bool pushRun = false;
+            for (auto x = 0; x < size.width; x++)
+            {
+                int32_t paletteIndex = *src++;
+                if (paletteIndex == kPaletteTransparent)
+                {
+                    if (npixels != 0)
+                    {
+                        x--;
+                        src--;
+                        pushRun = true;
+                    }
+                }
+                else
+                {
+                    if (npixels == 0)
+                    {
+                        startX = x;
+                    }
+
+                    npixels++;
+                    *dst++ = static_cast<uint8_t>(paletteIndex);
+                }
+                if (npixels == 127 || x == size.width - 1)
+                {
+                    pushRun = true;
+                }
+
+                if (pushRun)
+                {
+                    if (npixels > 0)
+                    {
+                        previousCode = currentCode;
+                        currentCode->NumPixels = npixels;
+                        currentCode->OffsetX_lo = static_cast<uint8_t>(startX & 0xFF);
+                        currentCode->OffsetX_hi = static_cast<uint8_t>((startX >> 8) & 0xFF);
+
+                        if (x == size.width - 1)
+                        {
+                            currentCode->NumPixels |= 0x80;
+                        }
+
+                        currentCode = reinterpret_cast<WideRLECode*>(dst);
+                        dst += 3;
+                    }
+                    else
+                    {
+                        if (previousCode == nullptr)
+                        {
+                            currentCode->NumPixels = 0x80;
+                            currentCode->OffsetX_lo = 0;
+                            currentCode->OffsetX_hi = 0;
+                        }
+                        else
+                        {
+                            previousCode->NumPixels |= 0x80;
+                            dst -= 3;
                         }
                     }
 
