@@ -34,10 +34,32 @@
 #include <iterator>
 #include <unordered_map>
 
+// Full definition of the PIMPL type declared in RideObject.h.
+// Must live at global scope (matches forward declaration), before the namespace block,
+// so the RideObject destructor can see the complete type.
+struct FlatRideAnimationData
+{
+    // Each element owns one phase's 0xFFFF-terminated frame-index array.
+    // FlatRideAnimationPhase::TimeToSpriteMap points into these; the inner vectors
+    // don't move once built (outer vector is reserved before push_back).
+    std::vector<std::vector<uint16_t>> FrameMaps;
+    // FlatRideAnimationProgram::Phases points into this; reserved before use.
+    std::vector<FlatRideAnimationPhase> Phases;
+    // FlatRideRotationDescriptor::Programs points into this; reserved before use.
+    std::vector<FlatRideAnimationProgram> Programs;
+    FlatRideRotationDescriptor Descriptor;
+};
+
 namespace OpenRCT2
 {
     using namespace OpenRCT2::Entity::Yaw;
     using namespace OpenRCT2::Numerics;
+
+    // Defined here where FlatRideAnimationData is complete, so delete has a full type.
+    RideObject::~RideObject()
+    {
+        delete _flatRideAnimation;
+    }
 
     /*
      * The number of sprites in the sprite group is the specified precision multiplied by this number. General rule is any slope
@@ -651,6 +673,9 @@ namespace OpenRCT2
                     _legacyType.intensity_multiplier = Json::GetNumber<int8_t>(ratingMultiplier["intensity"]);
                     _legacyType.nausea_multiplier = Json::GetNumber<int8_t>(ratingMultiplier["nausea"]);
                 }
+
+                if (properties.contains("flatRideAnimation") && properties["flatRideAnimation"].is_object())
+                    ReadJsonFlatRideAnimation(properties["flatRideAnimation"]);
             }
 
             _legacyType.BuildMenuPriority = Json::GetNumber<uint8_t>(properties["buildMenuPriority"]);
@@ -1182,4 +1207,103 @@ namespace OpenRCT2
         const auto& rtd = GetRideTypeDescriptor(rideType);
         return rtd.Heights.ClearanceHeight;
     }
+    void RideObject::ReadJsonFlatRideAnimation(json_t& j)
+    {
+        delete _flatRideAnimation;
+        _flatRideAnimation = nullptr;
+        auto* data = new FlatRideAnimationData();
+
+        data->Descriptor.FramesPerDir            = Json::GetNumber<uint16_t>(j["framesPerDir"]);
+        data->Descriptor.StructureZOffset        = Json::GetNumber<int8_t>(j["structureZOffset"], 7);
+        data->Descriptor.InvalidationHalfWidth   = Json::GetNumber<uint8_t>(j["invalidationHalfWidth"]);
+        data->Descriptor.InvalidationHeightAbove = Json::GetNumber<uint8_t>(j["invalidationHeightAbove"]);
+        data->Descriptor.InvalidationHeightBelow = Json::GetNumber<uint8_t>(j["invalidationHeightBelow"]);
+        data->Descriptor.RiderFrameStride        = Json::GetNumber<uint8_t>(j["riderFrameStride"]);
+
+        if (!j.contains("programs") || !j["programs"].is_array())
+        {
+            _legacyType.flatRideAnimation = &data->Descriptor;
+            _flatRideAnimation = data;
+            return;
+        }
+
+        json_t& jPrograms = j["programs"];
+
+        // Count total phases up front so we can reserve the vectors before taking any
+        // raw pointers into them — push_back after a pointer is taken would dangle.
+        size_t totalPhases = 0;
+        for (auto& jProg : jPrograms)
+        {
+            if (jProg.contains("phases") && jProg["phases"].is_array())
+                totalPhases += jProg["phases"].size();
+        }
+        data->FrameMaps.reserve(totalPhases);
+        data->Phases.reserve(totalPhases);
+        data->Programs.reserve(jPrograms.size());
+
+        std::vector<size_t>  phaseStarts;
+        std::vector<uint8_t> phaseCounts;
+        phaseStarts.reserve(jPrograms.size());
+        phaseCounts.reserve(jPrograms.size());
+
+        for (auto& jProg : jPrograms)
+        {
+            phaseStarts.push_back(data->Phases.size());
+            uint8_t localIdx = 0;
+
+            if (jProg.contains("phases") && jProg["phases"].is_array())
+            {
+                for (auto& jPhase : jProg["phases"])
+                {
+                    uint16_t startFrame  = Json::GetNumber<uint16_t>(jPhase["startFrame"]);
+                    uint16_t endFrame    = Json::GetNumber<uint16_t>(jPhase["endFrame"]);
+                    uint8_t  ticksPerFrame = Json::GetNumber<uint8_t>(jPhase["ticksPerFrame"], 1);
+                    if (ticksPerFrame < 1) ticksPerFrame = 1;
+
+                    // Sequential frame map with optional time-stretching:
+                    // [f, f, ...(ticksPerFrame), f+1, f+1, ..., endFrame, ..., 0xFFFF]
+                    auto& frameMap = data->FrameMaps.emplace_back();
+                    uint16_t count = (endFrame >= startFrame) ? (endFrame - startFrame + 1) : 0;
+                    frameMap.reserve(static_cast<size_t>(count) * ticksPerFrame + 1);
+                    for (uint16_t f = startFrame; f <= endFrame; ++f)
+                        for (uint8_t t = 0; t < ticksPerFrame; ++t)
+                            frameMap.push_back(f);
+                    frameMap.push_back(0xFFFF);
+
+                    FlatRideAnimationPhase phase{};
+                    phase.TimeToSpriteMap              = frameMap.data();
+                    // Default nextPhase advances to the next phase in sequence.
+                    // Override in JSON for non-linear flow (e.g. loop-back to phase 1).
+                    phase.NextPhase                    = Json::GetNumber<uint8_t>(
+                        jPhase["nextPhase"], static_cast<uint8_t>(localIdx + 1));
+                    phase.RepeatUntilRotationsComplete = jPhase.contains("repeatUntilRotationsComplete")
+                        && Json::GetBoolean(jPhase["repeatUntilRotationsComplete"]);
+                    phase.IsFinalPhase                 = jPhase.contains("isFinalPhase")
+                        && Json::GetBoolean(jPhase["isFinalPhase"]);
+                    phase.ResetRotationsOnEntry        = jPhase.contains("resetRotationsOnEntry")
+                        && Json::GetBoolean(jPhase["resetRotationsOnEntry"]);
+
+                    data->Phases.push_back(phase);
+                    ++localIdx;
+                }
+            }
+            phaseCounts.push_back(localIdx);
+        }
+
+        // Phases is now stable — build Programs with pointers into it.
+        for (size_t i = 0; i < jPrograms.size(); ++i)
+        {
+            FlatRideAnimationProgram prog{};
+            prog.Phases    = data->Phases.data() + phaseStarts[i];
+            prog.NumPhases = phaseCounts[i];
+            data->Programs.push_back(prog);
+        }
+
+        data->Descriptor.Programs    = data->Programs.data();
+        data->Descriptor.NumPrograms = static_cast<uint8_t>(data->Programs.size());
+
+        _legacyType.flatRideAnimation = &data->Descriptor;
+        _flatRideAnimation = data;
+    }
+
 } // namespace OpenRCT2

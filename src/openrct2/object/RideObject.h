@@ -15,9 +15,14 @@
 #include "../ride/RideTypes.h"
 #include "Object.h"
 
+#include <memory>
 #include <vector>
 
 enum class RideCategory : uint8_t;
+
+// Forward declaration — FlatRideAnimationData is fully defined in RideObject.cpp.
+// Using PIMPL so consumers of RideObject.h don't need to include VehicleData.h / RideData.h.
+struct FlatRideAnimationData;
 
 namespace OpenRCT2
 {
@@ -29,9 +34,17 @@ namespace OpenRCT2
         std::vector<int8_t> _peepLoadingPositions[RCT2::ObjectLimits::kMaxCarTypesPerRideEntry];
         std::vector<std::array<CoordsXY, 3>> _peepLoadingWaypoints[RCT2::ObjectLimits::kMaxCarTypesPerRideEntry];
         bool _shouldLoadImages = false;
+        // Owned storage for JSON-driven flat ride animation descriptors.
+        // Null for every ride that doesn't have a "flatRideAnimation" JSON block.
+        // Raw pointer (not unique_ptr): MSVC's unique_ptr static_asserts completeness at
+        // template instantiation time, before the custom destructor in RideObject.cpp is seen.
+        FlatRideAnimationData* _flatRideAnimation = nullptr;
 
     public:
         static constexpr ObjectType kObjectType = ObjectType::ride;
+
+        // Defined in RideObject.cpp where FlatRideAnimationData is complete.
+        ~RideObject() override;
 
         void* GetLegacyData() override
         {
@@ -61,6 +74,7 @@ namespace OpenRCT2
         void ReadLegacyCar(IReadObjectContext* context, IStream* stream, CarEntry& car);
 
         void ReadJsonVehicleInfo(IReadObjectContext* context, json_t& properties);
+        void ReadJsonFlatRideAnimation(json_t& j);
         std::vector<CarEntry> ReadJsonCars([[maybe_unused]] IReadObjectContext* context, json_t& jCars);
         CarEntry ReadJsonCar([[maybe_unused]] IReadObjectContext* context, json_t& jCar);
         VehicleColourPresetList ReadJsonCarColours(json_t& jCarColours);

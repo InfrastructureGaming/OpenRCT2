@@ -26,6 +26,17 @@
 
 using namespace OpenRCT2;
 
+// Returns the FlatRideRotationDescriptor for a ride, preferring a descriptor parsed
+// from the ride's parkobj JSON ("flatRideAnimation" block) over the compiled RTD default.
+// Allows fully data-driven flat rides defined in a parkobj with no per-ride C++ code.
+static const FlatRideRotationDescriptor& GetFlatRideDescriptor(const Ride& ride)
+{
+    const auto* entry = GetRideEntryByIndex(ride.subtype);
+    if (entry != nullptr && entry->flatRideAnimation != nullptr)
+        return *entry->flatRideAnimation;
+    return GetRideTypeDescriptor(ride.type).FlatRideRotation;
+}
+
 /**
  * Draws one structure tile for a generic rotation-style flat ride.
  *
@@ -36,7 +47,7 @@ static void PaintGenericRotatingStructure(
     PaintSession& session, const Ride& ride, uint8_t direction, int8_t xOffset, int8_t yOffset, uint16_t height,
     ImageId stationColour)
 {
-    const auto& desc = GetRideTypeDescriptor(ride.type).FlatRideRotation;
+    const auto& desc = GetFlatRideDescriptor(ride);
     if (desc.FramesPerDir == 0)
         return;
 
@@ -76,8 +87,8 @@ static void PaintGenericRotatingStructure(
     // NOT redirected to the centre like the image draw position is. This lets each of the
     // redundant draws sort correctly against its own host tile's neighbours, while the sprite
     // itself is redrawn at the shared centre point so it visually appears in the right place.
-    CoordsXYZ offset(xOffset, yOffset, height + 7);
-    BoundBoxXYZ bb = { { 0, 0, height + 7 }, { 24, 24, 48 } };
+    CoordsXYZ offset(xOffset, yOffset, height + desc.StructureZOffset);
+    BoundBoxXYZ bb = { { 0, 0, height + desc.StructureZOffset }, { 24, 24, 48 } };
 
     // Primary remap (indices 243-254) is excluded from GetClosestPaletteIndex, so Blender
     // renders via -m closest can never produce those pixels. Route Body→secondary remap
@@ -303,11 +314,14 @@ static constexpr uint8_t RotateEdges(uint8_t edges, uint8_t direction)
     return static_cast<uint8_t>(((edges << direction) | (edges >> (4 - direction))) & 0xF);
 }
 
-// {xMin, xMax, yMin, yMax} of the rotated 6x6 offset range. The draw offset is centered
-// on the true grid center (see the +16,+16 shift in PaintGenericRotatingFlatRide6x6),
-// which makes this range symmetric about zero and identical for every camera direction.
+// {xMin, xMax, yMin, yMax} of the rotated draw-offset range for each footprint size.
 // Used to identify which screen-corner a corner tile's rotated offset falls on.
-constexpr int8_t kFlatTrack6x6Bounds[4] = { -80, 80, -80, 80 };
+// 6×6: cursor at row2,col2; +16 shift → max rotated offset = |-64|+16 = 80.
+// 7×7: cursor at row3,col3 (true center); no shift → max rotated offset = 96.
+// 8×8: cursor at row3,col3; +16 shift → max rotated offset = |-96|+16 = 112.
+constexpr int8_t kFlatTrack6x6Bounds[4] = { -80,  80,  -80,  80  };
+constexpr int8_t kFlatTrack7x7Bounds[4] = { -96,  96,  -96,  96  };
+constexpr int8_t kFlatTrack8x8Bounds[4] = { -112, 112, -112, 112 };
 
 /**
  * 6x6 footprint variant. Unlike 5x5 (an odd grid whose center tile doubles as the cursor
@@ -374,6 +388,114 @@ static void PaintGenericRotatingFlatRide6x6(
     PaintUtilSetGeneralSupportHeight(session, height + 160);
 }
 
+/**
+ * 7×7 footprint variant. Odd dimension with a true geometric center at the cursor tile
+ * (seq24, clearance 0,0 at row3,col3). Unlike 6×6, no half-tile shift is needed: the
+ * cursor tile already sits at the grid center, so the draw offset is simply -clearance.
+ */
+static void PaintGenericRotatingFlatRide7x7(
+    PaintSession& session, const Ride& ride, uint8_t trackSequence, uint8_t direction, int32_t height,
+    const TrackElement& trackElement, SupportType supportType)
+{
+    const auto& ted = OpenRCT2::TrackMetadata::GetTrackElementDescriptor(TrackElemType::flatTrack7x7);
+    const auto& clearance = ted.sequenceData.sequences[trackSequence].clearance;
+
+    uint8_t localEdges = 0;
+    if (clearance.x == -96) localEdges |= EDGE_NE;
+    if (clearance.x == 96)  localEdges |= EDGE_SW;
+    if (clearance.y == -96) localEdges |= EDGE_NW;
+    if (clearance.y == 96)  localEdges |= EDGE_SE;
+    const uint8_t edges = RotateEdges(localEdges, direction);
+
+    auto stationColour = GetStationColourScheme(session, trackElement);
+    WoodenASupportsPaintSetupRotated(
+        session, WoodenSupportType::truss, WoodenSupportSubType::neSw, direction, height, stationColour);
+
+    const StationObject* stationObject = ride.getStationObject();
+    TrackPaintUtilPaintFloor(session, edges, stationColour, height, kFloorSpritesMulch, stationObject);
+
+    TrackPaintUtilPaintFences(
+        session, edges, session.MapPosition, trackElement, ride, stationColour, height, kFenceSpritesRope,
+        session.CurrentRotation);
+
+    // 7×7 has a true center at the cursor tile — no half-tile shift.
+    const auto [ox, oy] = RotateOffset90(
+        static_cast<int8_t>(-clearance.x), static_cast<int8_t>(-clearance.y), direction);
+    PaintGenericRotatingStructure(session, ride, direction, ox, oy, height, stationColour);
+
+    int32_t cornerSegments = 0;
+    const bool isCorner = (clearance.x == -96 || clearance.x == 96) && (clearance.y == -96 || clearance.y == 96);
+    if (isCorner)
+    {
+        const auto& b = kFlatTrack7x7Bounds;
+        if (ox == b[1] && oy == b[3])
+            cornerSegments = EnumsToFlags(PaintSegment::top, PaintSegment::topLeft, PaintSegment::topRight);
+        else if (ox == b[1] && oy == b[2])
+            cornerSegments = EnumsToFlags(PaintSegment::topRight, PaintSegment::right, PaintSegment::bottomRight);
+        else if (ox == b[0] && oy == b[3])
+            cornerSegments = EnumsToFlags(PaintSegment::topLeft, PaintSegment::left, PaintSegment::bottomLeft);
+        else
+            cornerSegments = EnumsToFlags(PaintSegment::bottomLeft, PaintSegment::bottom, PaintSegment::bottomRight);
+    }
+    PaintUtilSetSegmentSupportHeight(session, cornerSegments, height + 2, 0x20);
+    PaintUtilSetSegmentSupportHeight(session, kSegmentsAll & ~cornerSegments, 0xFFFF, 0);
+    PaintUtilSetGeneralSupportHeight(session, height + 160);
+}
+
+/**
+ * 8×8 footprint variant. Even dimension; cursor at row3,col3 (clearance 0,0), one tile
+ * NE/NW of the geometric center — same asymmetry as 6×6. A +16 shift is applied before
+ * rotating so the model renders centered on the 8×8 plot in every camera direction.
+ */
+static void PaintGenericRotatingFlatRide8x8(
+    PaintSession& session, const Ride& ride, uint8_t trackSequence, uint8_t direction, int32_t height,
+    const TrackElement& trackElement, SupportType supportType)
+{
+    const auto& ted = OpenRCT2::TrackMetadata::GetTrackElementDescriptor(TrackElemType::flatTrack8x8);
+    const auto& clearance = ted.sequenceData.sequences[trackSequence].clearance;
+
+    uint8_t localEdges = 0;
+    if (clearance.x == -96)  localEdges |= EDGE_NE;
+    if (clearance.x == 128)  localEdges |= EDGE_SW;
+    if (clearance.y == -96)  localEdges |= EDGE_NW;
+    if (clearance.y == 128)  localEdges |= EDGE_SE;
+    const uint8_t edges = RotateEdges(localEdges, direction);
+
+    auto stationColour = GetStationColourScheme(session, trackElement);
+    WoodenASupportsPaintSetupRotated(
+        session, WoodenSupportType::truss, WoodenSupportSubType::neSw, direction, height, stationColour);
+
+    const StationObject* stationObject = ride.getStationObject();
+    TrackPaintUtilPaintFloor(session, edges, stationColour, height, kFloorSpritesMulch, stationObject);
+
+    TrackPaintUtilPaintFences(
+        session, edges, session.MapPosition, trackElement, ride, stationColour, height, kFenceSpritesRope,
+        session.CurrentRotation);
+
+    // Shift from cursor (row3,col3) to the geometric center of the 8×8 grid (+16 in both axes).
+    const auto [ox, oy] = RotateOffset90(
+        static_cast<int8_t>(-clearance.x + 16), static_cast<int8_t>(-clearance.y + 16), direction);
+    PaintGenericRotatingStructure(session, ride, direction, ox, oy, height, stationColour);
+
+    int32_t cornerSegments = 0;
+    const bool isCorner = (clearance.x == -96 || clearance.x == 128) && (clearance.y == -96 || clearance.y == 128);
+    if (isCorner)
+    {
+        const auto& b = kFlatTrack8x8Bounds;
+        if (ox == b[1] && oy == b[3])
+            cornerSegments = EnumsToFlags(PaintSegment::top, PaintSegment::topLeft, PaintSegment::topRight);
+        else if (ox == b[1] && oy == b[2])
+            cornerSegments = EnumsToFlags(PaintSegment::topRight, PaintSegment::right, PaintSegment::bottomRight);
+        else if (ox == b[0] && oy == b[3])
+            cornerSegments = EnumsToFlags(PaintSegment::topLeft, PaintSegment::left, PaintSegment::bottomLeft);
+        else
+            cornerSegments = EnumsToFlags(PaintSegment::bottomLeft, PaintSegment::bottom, PaintSegment::bottomRight);
+    }
+    PaintUtilSetSegmentSupportHeight(session, cornerSegments, height + 2, 0x20);
+    PaintUtilSetSegmentSupportHeight(session, kSegmentsAll & ~cornerSegments, 0xFFFF, 0);
+    PaintUtilSetGeneralSupportHeight(session, height + 160);
+}
+
 TrackPaintFunction GetTrackPaintFunctionGenericFlatRide(TrackElemType trackType)
 {
     switch (trackType)
@@ -381,6 +503,8 @@ TrackPaintFunction GetTrackPaintFunctionGenericFlatRide(TrackElemType trackType)
         case TrackElemType::flatTrack4x4: return PaintGenericRotatingFlatRide;
         case TrackElemType::flatTrack5x5: return PaintGenericRotatingFlatRide5x5;
         case TrackElemType::flatTrack6x6: return PaintGenericRotatingFlatRide6x6;
+        case TrackElemType::flatTrack7x7: return PaintGenericRotatingFlatRide7x7;
+        case TrackElemType::flatTrack8x8: return PaintGenericRotatingFlatRide8x8;
         default:                          return TrackPaintFunctionDummy;
     }
 }

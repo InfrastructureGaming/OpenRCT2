@@ -21,6 +21,11 @@
 // Set to 255 on all tracked ride entries
 static uint8_t constexpr kNoFlatRideCars = 0xFF;
 
+// Forward declaration — full definition in RideData.h.
+// Allows RideObjectEntry to carry a pointer to the parsed animation descriptor
+// without creating a circular include dependency (RideData.h already includes RideEntry.h).
+struct FlatRideRotationDescriptor;
+
 struct RideNaming
 {
     StringId Name;
@@ -110,6 +115,11 @@ struct RideObjectEntry
     ShopItem shop_item[OpenRCT2::RCT2::ObjectLimits::kMaxShopItemsPerRideEntry];
     StringId capacity;
     uint8_t Clearance;
+
+    // Set at load time by RideObject::ReadJsonFlatRideAnimation when the parkobj contains a
+    // "flatRideAnimation" JSON block. Points into RideObject-owned storage; valid for the
+    // lifetime of the loaded object. nullptr for all legacy/non-generic-flat-ride entries.
+    const FlatRideRotationDescriptor* flatRideAnimation = nullptr;
 
     const CarEntry* GetCar(size_t id) const
     {
