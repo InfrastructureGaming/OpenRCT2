@@ -9,9 +9,9 @@
 
 #include "TrackData.h"
 
-// kTrackElementDescriptors is initialized via std::to_array with 352 TrackElementDescriptor
-// elements. With kMaxSequencesPerPiece=36, each element is ~2500 bytes; the braced-initializer
-// list creates ~900 KB of stack temporaries during startup, exceeding the 1 MB default.
+// kTrackElementDescriptors is initialized via std::to_array with 354 TrackElementDescriptor
+// elements. With kMaxSequencesPerPiece=64, each element is ~3600 bytes; the braced-initializer
+// list creates ~1.3 MB of stack temporaries during startup, exceeding the 1 MB default.
 // Increasing the stack reserve to 8 MB resolves the STATUS_STACK_OVERFLOW crash.
 #ifdef _MSC_VER
 #    pragma comment(linker, "/STACK:8388608")
@@ -10717,6 +10717,8 @@ namespace OpenRCT2::TrackMetadata
         kTEDDiagDown25Brakes,
         kTEDFlatTrack5x5,
         kTEDFlatTrack6x6,
+        kTEDFlatTrack7x7,
+        kTEDFlatTrack8x8,
     });
     // std::size() on a non-constexpr array is not a constant expression, so use tuple_size
     // on the array type (via remove_const_t + decltype) which IS a compile-time constant.

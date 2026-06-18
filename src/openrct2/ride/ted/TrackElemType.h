@@ -383,8 +383,10 @@ namespace OpenRCT2
 
         flatTrack5x5 = 350,
         flatTrack6x6 = 351,
+        flatTrack7x7 = 352,
+        flatTrack8x8 = 353,
 
-        count = 352,
+        count = 354,
 
         none = 65535,
     };

@@ -554,6 +554,7 @@
     <ClInclude Include="ride\rtd\thrill\LaunchedFreefall.h" />
     <ClInclude Include="ride\rtd\thrill\MagicCarpet.h" />
     <ClInclude Include="ride\rtd\thrill\TiltAWhirl.h" />
+    <ClInclude Include="ride\rtd\thrill\Troika.h" />
     <ClInclude Include="ride\rtd\thrill\MotionSimulator.h" />
     <ClInclude Include="ride\rtd\thrill\RotoDrop.h" />
     <ClInclude Include="ride\rtd\thrill\SwingingInverterShip.h" />

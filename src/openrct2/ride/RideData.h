@@ -512,6 +512,7 @@ struct FlatRideRotationDescriptor
     uint8_t  BbLengthX        = 24;  // occlusion bounding-box dimensions
     uint8_t  BbLengthY        = 24;
     uint8_t  BbLengthZ        = 48;
+    int8_t   StructureZOffset =  7;  // z added to height for the structure draw; default 7 matches legacy hardcoded value
     // Override vehicle spriteData bounds used by invalidate() when the ride footprint is
     // larger than the vehicle's native sprite size. 0 = use carEntry defaults.
     // Required when the entity sits at the origin tile but the visual is several tiles away

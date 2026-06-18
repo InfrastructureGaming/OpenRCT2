@@ -434,6 +434,21 @@ const FlatRideAnimationProgram kFreestylePrograms[] = {
     { kFreestyleLongProgramPhases, 1 }, // operationOption 0: Long Program (3600 frames)
 };
 
+// Troika: Start (frames 0-1300, 1301 frames) → Loop (frames 1301-1556, 256 frames) ×N → End (frames 1557-2460, 904 frames)
+static constexpr auto kTroikaAnimationStart = MakeSequentialFrameMap<0, 1301>();
+static constexpr auto kTroikaAnimationLoop  = MakeSequentialFrameMap<1301, 256>();
+static constexpr auto kTroikaAnimationEnd   = MakeSequentialFrameMap<1557, 904>();
+
+static constexpr FlatRideAnimationPhase kTroikaPhases[] = {
+    { kTroikaAnimationStart.data(), 1, false, false }, // 0: Start -> Loop
+    { kTroikaAnimationLoop.data(),  2, true,  false }, // 1: Loop, repeats until ride.rotations -> End
+    { kTroikaAnimationEnd.data(),   0, false, true  }, // 2: End -> arriving
+};
+
+const FlatRideAnimationProgram kTroikaPrograms[] = {
+    { kTroikaPhases, 3 },
+};
+
 /** rct2: 0x009A12EC */
 static constexpr TopSpinTimeToSpriteMap kTopSpinAnimationBeginners[] = {
     {  0,  0 }, {  0,  0 }, {  0,  0 }, {  0,  0 }, {  0,  0 }, {  0,  0 }, {  0,  0 },

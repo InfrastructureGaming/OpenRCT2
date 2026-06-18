@@ -25,7 +25,9 @@
 
 namespace OpenRCT2::TrackMetadata
 {
-    constexpr uint8_t kMaxSequencesPerPiece = 36;
+    // 64 covers the largest footprint type currently defined (8×8 = 64 tiles).
+    // Bump in lockstep if a footprint larger than 8×8 is ever added.
+    constexpr uint8_t kMaxSequencesPerPiece = 64;
 
     using TrackComputeFunction = int32_t (*)(int16_t);
 

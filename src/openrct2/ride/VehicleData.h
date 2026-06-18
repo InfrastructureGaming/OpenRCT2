@@ -50,6 +50,7 @@ struct FlatRideAnimationProgram
 
 extern const FlatRideAnimationProgram kTiltAWhirlPrograms[];
 extern const FlatRideAnimationProgram kFreestylePrograms[];
+extern const FlatRideAnimationProgram kTroikaPrograms[];
 
 extern const uint8_t MotionSimulatorTimeToSpriteMap[];
 extern const int32_t MotionSimulatorTimeToSpriteMapCount;
