@@ -1876,7 +1876,7 @@ namespace OpenRCT2::Ui::Windows
             gDropdown.defaultIndex = info.DefaultIndex;
         }
 
-        static constexpr StringId GetRideTypeNameForDropdown(ride_type_t rideType)
+        static StringId GetRideTypeNameForDropdown(ride_type_t rideType)
         {
             auto stringId = GetRideTypeDescriptor(rideType).Naming.Name;
             if (stringId == STR_UNKNOWN_RIDE)
@@ -1894,7 +1894,7 @@ namespace OpenRCT2::Ui::Windows
 
             _rideDropdownData.clear();
 
-            for (uint8_t i = 0; i < RIDE_TYPE_COUNT; i++)
+            for (ride_type_t i = 0; i < static_cast<ride_type_t>(GetRideTypeCount()); i++)
             {
                 // Will return the actual name for most rides, but a special string "Unknown Ride ({INT32})" for unknown ones.
                 // The placeholder will then be filled with the ID.
@@ -1933,11 +1933,11 @@ namespace OpenRCT2::Ui::Windows
             Widget* dropdownWidget = widget - 1;
             WindowDropdownShowText(
                 { windowPos.x + dropdownWidget->left, windowPos.y + dropdownWidget->top }, dropdownWidget->height(), colours[1],
-                Dropdown::Flag::StayOpen, RIDE_TYPE_COUNT);
+                Dropdown::Flag::StayOpen, static_cast<int32_t>(GetRideTypeCount()));
 
             // Find the current ride type in the ordered list.
             int32_t pos = 0;
-            for (int32_t i = 0; i < RIDE_TYPE_COUNT; i++)
+            for (int32_t i = 0; i < static_cast<int32_t>(GetRideTypeCount()); i++)
             {
                 if (_rideDropdownData[i].RideTypeId == ride->type)
                 {
@@ -2015,7 +2015,7 @@ namespace OpenRCT2::Ui::Windows
             {
                 selectionShouldBeExpanded = true;
                 rideTypeIterator = 0;
-                rideTypeIteratorMax = RIDE_TYPE_COUNT - 1;
+                rideTypeIteratorMax = static_cast<int32_t>(GetRideTypeCount()) - 1;
             }
             else
             {
@@ -2271,11 +2271,11 @@ namespace OpenRCT2::Ui::Windows
                     break;
                 }
                 case WIDX_RIDE_TYPE_DROPDOWN:
-                    if (dropdownIndex != -1 && dropdownIndex < RIDE_TYPE_COUNT)
+                    if (dropdownIndex != -1 && dropdownIndex < static_cast<int32_t>(GetRideTypeCount()))
                     {
-                        auto rideLabelId = std::clamp(dropdownIndex, 0, RIDE_TYPE_COUNT - 1);
+                        auto rideLabelId = std::clamp(dropdownIndex, 0, static_cast<int32_t>(GetRideTypeCount()) - 1);
                         auto rideType = _rideDropdownData[rideLabelId].RideTypeId;
-                        if (rideType < RIDE_TYPE_COUNT)
+                        if (RideTypeIsValid(rideType))
                         {
                             auto rideSetSetting = GameActions::RideSetSettingAction(
                                 rideId, GameActions::RideSetSetting::rideType, rideType);
@@ -7144,7 +7144,7 @@ namespace OpenRCT2::Ui::Windows
      */
     WindowBase* RideMainOpen(const Ride& ride)
     {
-        if (ride.type >= RIDE_TYPE_COUNT)
+        if (!RideTypeIsValid(ride.type))
         {
             return nullptr;
         }
@@ -7181,7 +7181,7 @@ namespace OpenRCT2::Ui::Windows
      */
     static WindowBase* WindowRideOpenStation(const Ride& ride, StationIndex stationIndex)
     {
-        if (ride.type >= RIDE_TYPE_COUNT)
+        if (!RideTypeIsValid(ride.type))
             return nullptr;
 
         if (ride.getRideTypeDescriptor().flags.has(RtdFlag::noVehicles))

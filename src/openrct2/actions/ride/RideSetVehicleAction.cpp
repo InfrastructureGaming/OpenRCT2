@@ -235,7 +235,7 @@ namespace OpenRCT2::GameActions
             {
                 selectionShouldBeExpanded = true;
                 rideTypeIterator = 0;
-                rideTypeIteratorMax = RIDE_TYPE_COUNT - 1;
+                rideTypeIteratorMax = static_cast<int32_t>(GetRideTypeCount()) - 1;
             }
             else
             {

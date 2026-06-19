@@ -716,7 +716,7 @@ namespace OpenRCT2::RCT2
                 }
             }
 
-            if (rideType >= RIDE_TYPE_COUNT)
+            if (!RideTypeIsValid(rideType))
             {
                 LOG_ERROR("Invalid ride type for a ride in this save.");
                 throw UnsupportedRideTypeException(rideType);
@@ -1066,7 +1066,7 @@ namespace OpenRCT2::RCT2
             dst.ProximityStart = { src.ProximityStartX, src.ProximityStartY, src.ProximityStartZ };
             dst.CurrentRide = RCT12RideIdToOpenRCT2RideId(src.CurrentRide);
             dst.State = src.State;
-            if (src.CurrentRide < Limits::kMaxRidesInPark && _s6.Rides[src.CurrentRide].type < std::size(kRideTypeDescriptors))
+            if (src.CurrentRide < Limits::kMaxRidesInPark && RideTypeIsValid(_s6.Rides[src.CurrentRide].type))
             {
                 dst.ProximityTrackType = RCT2TrackTypeToOpenRCT2(
                     src.ProximityTrackType, _s6.Rides[src.CurrentRide].type, IsFlatRide(src.CurrentRide));

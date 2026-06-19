@@ -39,7 +39,7 @@ namespace OpenRCT2::Ui
         {
             StringId rideTypeString = kStringIdNone;
             auto rideTypeId = objective.RideId;
-            if (rideTypeId != kRideTypeNull && rideTypeId < RIDE_TYPE_COUNT)
+            if (rideTypeId != kRideTypeNull && RideTypeIsValid(rideTypeId))
             {
                 rideTypeString = GetRideTypeDescriptor(rideTypeId).Naming.Name;
             }

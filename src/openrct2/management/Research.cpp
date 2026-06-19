@@ -18,7 +18,6 @@
 #include "../actions/GameActionRunner.h"
 #include "../actions/park/ParkSetResearchFundingAction.h"
 #include "../config/Config.h"
-#include "../core/BitSet.hpp"
 #include "../core/EnumUtils.hpp"
 #include "../core/Guard.hpp"
 #include "../localisation/Formatter.h"
@@ -52,7 +51,7 @@ static constexpr int32_t _researchRate[] = {
     400,
 };
 
-static bool _researchedRideTypes[RIDE_TYPE_COUNT];
+static std::vector<bool> _researchedRideTypes(RIDE_TYPE_COUNT, false);
 static bool _researchedRideEntries[kMaxRideObjects];
 static bool _researchedSceneryItems[SCENERY_TYPE_COUNT][UINT16_MAX];
 
@@ -1025,7 +1024,7 @@ bool ResearchItem::operator==(const ResearchItem& rhs) const
     return (entryIndex == rhs.entryIndex && baseRideType == rhs.baseRideType && type == rhs.type);
 }
 
-static BitSet<RIDE_TYPE_COUNT> _seenRideType = {};
+static std::vector<bool> _seenRideType(RIDE_TYPE_COUNT, false);
 
 static void ResearchUpdateFirstOfType(ResearchItem* researchItem)
 {
@@ -1066,7 +1065,7 @@ static void ResearchMarkRideTypeAsSeen(const ResearchItem& researchItem)
 void ResearchDetermineFirstOfType()
 {
     auto& gameState = getGameState();
-    _seenRideType.reset();
+    std::fill(_seenRideType.begin(), _seenRideType.end(), false);
 
     for (const auto& researchItem : gameState.researchItemsInvented)
     {

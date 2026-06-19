@@ -89,7 +89,7 @@ namespace OpenRCT2::GameActions
             return Result(Status::noFreeElements, STR_CANT_CREATE_NEW_RIDE_ATTRACTION, STR_TOO_MANY_RIDES);
         }
 
-        if (_rideType >= RIDE_TYPE_COUNT)
+        if (!RideTypeIsValid(_rideType))
         {
             LOG_ERROR("Invalid ride type %d", _rideType);
             return Result(Status::invalidParameters, STR_CANT_CREATE_NEW_RIDE_ATTRACTION, STR_INVALID_RIDE_TYPE);

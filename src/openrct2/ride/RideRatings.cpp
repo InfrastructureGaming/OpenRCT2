@@ -357,7 +357,7 @@ static void ride_ratings_update_state_2(RideRating::UpdateState& state)
 {
     const RideId rideIndex = state.CurrentRide;
     auto ride = GetRide(rideIndex);
-    if (ride == nullptr || ride->status == RideStatus::closed || ride->type >= RIDE_TYPE_COUNT)
+    if (ride == nullptr || ride->status == RideStatus::closed || !RideTypeIsValid(ride->type))
     {
         state.State = RIDE_RATINGS_STATE_FIND_NEXT_RIDE;
         return;

@@ -135,7 +135,7 @@ namespace OpenRCT2::GameActions
             return Result(Status::invalidParameters, STR_RIDE_CONSTRUCTION_CANT_REMOVE_THIS, STR_ERR_RIDE_NOT_FOUND);
         }
 
-        if (ride->type >= RIDE_TYPE_COUNT)
+        if (!RideTypeIsValid(ride->type))
         {
             LOG_ERROR("Ride type not found. ride type = %d.", ride->type);
             return Result(Status::invalidParameters, STR_RIDE_CONSTRUCTION_CANT_REMOVE_THIS, STR_ERR_VALUE_OUT_OF_RANGE);

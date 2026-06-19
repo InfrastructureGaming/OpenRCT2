@@ -18,6 +18,7 @@
 #include "../core/JobPool.h"
 #include "../localisation/StringIds.h"
 #include "../ride/Ride.h"
+#include "../ride/RideData.h"
 #include "../ride/RideAudio.h"
 #include "../ui/WindowManager.h"
 #include "BannerSceneryEntry.h"
@@ -60,7 +61,7 @@ namespace OpenRCT2
         IObjectRepository& _objectRepository;
 
         std::array<std::vector<Object*>, EnumValue(ObjectType::count)> _loadedObjects;
-        std::array<std::vector<ObjectEntryIndex>, RIDE_TYPE_COUNT> _rideTypeToObjectMap;
+        std::vector<std::vector<ObjectEntryIndex>> _rideTypeToObjectMap;
 
         // Used to return a safe empty vector back from GetAllRideEntries, can be removed when std::span is available
         std::vector<ObjectEntryIndex> _nullRideTypeEntries;
@@ -748,11 +749,9 @@ namespace OpenRCT2
 
         void ResetTypeToRideEntryIndexMap()
         {
-            // Clear all ride objects
-            for (auto& v : _rideTypeToObjectMap)
-            {
-                v.clear();
-            }
+            // Resize to cover all registered ride types (built-ins + any custom),
+            // then clear each slot ready for repopulation below.
+            _rideTypeToObjectMap.assign(GetRideTypeCount(), {});
 
             // Build object lists
             const auto maxRideObjects = static_cast<size_t>(getObjectEntryGroupCount(ObjectType::ride));

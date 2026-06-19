@@ -108,7 +108,7 @@ namespace OpenRCT2::GameActions
             return Result(Status::invalidParameters, STR_RIDE_CONSTRUCTION_CANT_CONSTRUCT_THIS_HERE, kStringIdNone);
         }
 
-        if (_rideType > RIDE_TYPE_COUNT)
+        if (!RideTypeIsValid(_rideType))
         {
             LOG_ERROR("Invalid ride type for track placement, rideType = %d", _rideType);
             return Result(

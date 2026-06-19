@@ -1985,7 +1985,7 @@ namespace OpenRCT2
         if (ride.status == RideStatus::open && !ride.flags.has(RideFlag::brokenDown))
         {
             // Peeps that are leaving the park will refuse to go on any rides, with the exception of free transport rides.
-            assert(ride.type < std::size(kRideTypeDescriptors));
+            assert(RideTypeIsValid(ride.type));
             if (!ride.getRideTypeDescriptor().flags.has(RtdFlag::isTransportRide) || ride.value == kRideValueUndefined
                 || RideGetPrice(ride) != 0)
             {

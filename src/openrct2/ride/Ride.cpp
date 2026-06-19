@@ -4028,7 +4028,7 @@ bool Ride::nameExists(std::string_view name, RideId excludeRideId)
 
 int32_t RideGetRandomColourPresetIndex(ride_type_t rideType)
 {
-    if (rideType >= std::size(kRideTypeDescriptors))
+    if (!RideTypeIsValid(rideType))
     {
         return 0;
     }

@@ -516,7 +516,7 @@ namespace OpenRCT2::Scripting
         JS_UNPACK_UINT32(value, ctx, jsValue);
         JS_THROW_IF_GAME_STATE_NOT_MUTABLE();
 
-        if (value >= RIDE_TYPE_COUNT)
+        if (!RideTypeIsValid(static_cast<ride_type_t>(value)))
         {
             auto& scriptEngine = GetContext()->GetScriptEngine();
             scriptEngine.LogPluginInfo("'rideType' value is invalid.");

@@ -729,18 +729,14 @@ constexpr RideTypeDescriptor kDummyRTD =
 };
 // clang-format on
 
-constexpr const RideTypeDescriptor& GetRideTypeDescriptor(ride_type_t rideType)
-{
-    if (rideType >= std::size(kRideTypeDescriptors))
-        return kDummyRTD;
+/** Returns the descriptor for the given ride type index; falls back to kDummyRTD for invalid indices. */
+const RideTypeDescriptor& GetRideTypeDescriptor(ride_type_t rideType);
 
-    return kRideTypeDescriptors[rideType];
-}
+/** Returns true if index refers to a valid (built-in or custom) ride type. */
+bool RideTypeIsValid(ride_type_t rideType);
 
-constexpr bool RideTypeIsValid(ride_type_t rideType)
-{
-    return rideType < std::size(kRideTypeDescriptors);
-}
+/** Total registered type count (built-ins + any custom). Replaces RIDE_TYPE_COUNT as a runtime bound. */
+uint32_t GetRideTypeCount();
 
 bool IsTrackEnabled(OpenRCT2::TrackGroup trackGroup);
 void UpdateEnabledRideGroups(TrackDrawerDescriptor trackDrawerDescriptor);

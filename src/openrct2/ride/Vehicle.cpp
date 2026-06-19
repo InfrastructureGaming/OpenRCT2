@@ -785,7 +785,7 @@ void Vehicle::Update()
     if (curRide == nullptr)
         return;
 
-    if (curRide->type >= RIDE_TYPE_COUNT)
+    if (!RideTypeIsValid(curRide->type))
         return;
 
     if (flags.has(VehicleFlag::testing))
@@ -1202,7 +1202,7 @@ GForces Vehicle::GetGForces() const
 void Vehicle::SetMapToolbar() const
 {
     auto curRide = GetRide();
-    if (curRide != nullptr && curRide->type < RIDE_TYPE_COUNT)
+    if (curRide != nullptr && RideTypeIsValid(curRide->type))
     {
         const Vehicle* vehicle = GetHead();
         if (vehicle == nullptr)

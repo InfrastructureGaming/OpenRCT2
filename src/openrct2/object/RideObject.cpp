@@ -1049,12 +1049,13 @@ namespace OpenRCT2
 
     ride_type_t RideObject::ParseRideType(const std::string& s)
     {
-        auto result = std::find_if(
-            std::begin(kRideTypeDescriptors), std::end(kRideTypeDescriptors), [s](const auto& rtd) { return rtd.Name == s; });
-        if (result == std::end(kRideTypeDescriptors))
-            return kRideTypeNull;
-        else
-            return std::distance(std::begin(kRideTypeDescriptors), result);
+        const uint32_t count = GetRideTypeCount();
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            if (GetRideTypeDescriptor(static_cast<ride_type_t>(i)).Name == s)
+                return static_cast<ride_type_t>(i);
+        }
+        return kRideTypeNull;
     }
 
     static const EnumMap<RideCategory> RideCategoryLookupTable{

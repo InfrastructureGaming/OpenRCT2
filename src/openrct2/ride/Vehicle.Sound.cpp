@@ -73,7 +73,7 @@ static SoundIdVolume VehicleSoundFadeInOut(
 void Vehicle::GetLiftHillSound(const Ride& curRide, SoundIdVolume& curSound)
 {
     scream_sound_id = SoundId::null;
-    if (curRide.type < std::size(kRideTypeDescriptors))
+    if (RideTypeIsValid(curRide.type))
     {
         // Get lift hill sound
         curSound.id = GetRideTypeDescriptor(curRide.type).LiftData.sound_id;
