@@ -145,7 +145,7 @@ static void PaintGenericRotatingStructure(
  * coverage (vs. a 3x3's 6-of-9) is what lets a larger composite sprite survive the
  * per-tile painter's-algorithm sort without being clipped by neighbouring floor tiles.
  */
-static void PaintGenericRotatingFlatRide(
+static void PaintFlatRideGeneric(
     PaintSession& session, const Ride& ride, uint8_t trackSequence, uint8_t direction, int32_t height,
     const TrackElement& trackElement, SupportType supportType)
 {
@@ -227,7 +227,7 @@ static void PaintGenericRotatingFlatRide(
     PaintUtilSetGeneralSupportHeight(session, height + 160);
 }
 
-static void PaintGenericRotatingFlatRide5x5(
+static void PaintFlatRideGeneric5x5(
     PaintSession& session, const Ride& ride, uint8_t trackSequence, uint8_t direction, int32_t height,
     const TrackElement& trackElement, SupportType supportType)
 {
@@ -291,7 +291,7 @@ static void PaintGenericRotatingFlatRide5x5(
 }
 
 // Rotates a tile-local (x,y) offset by direction*90°. This is the rotation rule implicitly
-// encoded by kTrackMap5x5 + the fixed offsets in PaintGenericRotatingFlatRide5x5's switch
+// encoded by kTrackMap5x5 + the fixed offsets in PaintFlatRideGeneric5x5's switch
 // (verified against all 4 direction rows: storedSeq1's -clearance (64,64) rotates to
 // (64,64)/case0, (64,-64)/case4, (-64,-64)/case24, (-64,64)/case20 for dir 0-3).
 static constexpr std::pair<int8_t, int8_t> RotateOffset90(int8_t x, int8_t y, uint8_t direction)
@@ -332,7 +332,7 @@ constexpr int8_t kFlatTrack8x8Bounds[4] = { -112, 112, -112, 112 };
  * tile's draw offset/edges/corner role are computed analytically from its own `clearance`
  * (read from the TED at runtime) and the current `direction`.
  */
-static void PaintGenericRotatingFlatRide6x6(
+static void PaintFlatRideGeneric6x6(
     PaintSession& session, const Ride& ride, uint8_t trackSequence, uint8_t direction, int32_t height,
     const TrackElement& trackElement, SupportType supportType)
 {
@@ -393,7 +393,7 @@ static void PaintGenericRotatingFlatRide6x6(
  * (seq24, clearance 0,0 at row3,col3). Unlike 6×6, no half-tile shift is needed: the
  * cursor tile already sits at the grid center, so the draw offset is simply -clearance.
  */
-static void PaintGenericRotatingFlatRide7x7(
+static void PaintFlatRideGeneric7x7(
     PaintSession& session, const Ride& ride, uint8_t trackSequence, uint8_t direction, int32_t height,
     const TrackElement& trackElement, SupportType supportType)
 {
@@ -447,7 +447,7 @@ static void PaintGenericRotatingFlatRide7x7(
  * NE/NW of the geometric center — same asymmetry as 6×6. A +16 shift is applied before
  * rotating so the model renders centered on the 8×8 plot in every camera direction.
  */
-static void PaintGenericRotatingFlatRide8x8(
+static void PaintFlatRideGeneric8x8(
     PaintSession& session, const Ride& ride, uint8_t trackSequence, uint8_t direction, int32_t height,
     const TrackElement& trackElement, SupportType supportType)
 {
@@ -496,15 +496,15 @@ static void PaintGenericRotatingFlatRide8x8(
     PaintUtilSetGeneralSupportHeight(session, height + 160);
 }
 
-TrackPaintFunction GetTrackPaintFunctionGenericFlatRide(TrackElemType trackType)
+TrackPaintFunction GetTrackPaintFunctionFlatRideGeneric(TrackElemType trackType)
 {
     switch (trackType)
     {
-        case TrackElemType::flatTrack4x4: return PaintGenericRotatingFlatRide;
-        case TrackElemType::flatTrack5x5: return PaintGenericRotatingFlatRide5x5;
-        case TrackElemType::flatTrack6x6: return PaintGenericRotatingFlatRide6x6;
-        case TrackElemType::flatTrack7x7: return PaintGenericRotatingFlatRide7x7;
-        case TrackElemType::flatTrack8x8: return PaintGenericRotatingFlatRide8x8;
+        case TrackElemType::flatTrack4x4: return PaintFlatRideGeneric;
+        case TrackElemType::flatTrack5x5: return PaintFlatRideGeneric5x5;
+        case TrackElemType::flatTrack6x6: return PaintFlatRideGeneric6x6;
+        case TrackElemType::flatTrack7x7: return PaintFlatRideGeneric7x7;
+        case TrackElemType::flatTrack8x8: return PaintFlatRideGeneric8x8;
         default:                          return TrackPaintFunctionDummy;
     }
 }

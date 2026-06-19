@@ -99,7 +99,7 @@ static constexpr TrackPaintFunctionGetter kPaintFunctionMap[] = {
     GetTrackPaintFunctionWaterRC,                  // waterCoaster
     GetTrackPaintFunctionWoodenRC,                 // woodenRollerCoaster
     GetTrackPaintFunctionWoodenWildMouse,          // woodenWildMouse
-    GetTrackPaintFunctionGenericFlatRide,          // genericRotatingFlatRide
+    GetTrackPaintFunctionFlatRideGeneric,          // flatRideGeneric
 
     DummyGetter,
     DummyGetter,

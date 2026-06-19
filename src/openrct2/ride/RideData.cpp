@@ -104,7 +104,7 @@
 #include "rtd/thrill/Freestyle.h"
 #include "rtd/thrill/TiltAWhirl.h"
 #include "rtd/thrill/Troika.h"
-#include "rtd/thrill/GenericRotatingFlatRide.h"
+#include "rtd/thrill/FlatRideGeneric.h"
 #include "rtd/thrill/MotionSimulator.h"
 #include "rtd/thrill/RotoDrop.h"
 #include "rtd/thrill/SwingingInverterShip.h"
@@ -365,7 +365,7 @@ constexpr RideTypeDescriptor kRideTypeDescriptors[RIDE_TYPE_COUNT] = {
     /* RIDE_TYPE_TILT_A_WHIRL                          */ TiltAWhirlRTD,
     /* RIDE_TYPE_FREESTYLE                             */ FreestyleRTD,
     /* RIDE_TYPE_TROIKA                                */ TroikaRTD,
-    /* RIDE_TYPE_GENERIC_ROTATING_FLAT_RIDE            */ GenericRotatingFlatRideRTD,
+    /* RIDE_TYPE_FLAT_RIDE_GENERIC                     */ FlatRideGenericRTD,
 };
 
 bool RideTypeDescriptor::SupportsTrackGroup(const TrackGroup trackGroup) const

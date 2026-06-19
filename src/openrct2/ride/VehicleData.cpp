@@ -391,11 +391,11 @@ static constexpr auto kTiltAWhirlAnimationLoop  = WidenAnimationFrameMap(kMerryG
 static constexpr auto kTiltAWhirlAnimationEnd   = WidenAnimationFrameMap(kMerryGoRoundAnimationEnd);
 
 // Regression-safety replication of the hardcoded Start/Loop/End walk above, expressed
-// as a FlatRideAnimationProgram for Vehicle::UpdateRotatingGeneric(). Used by TiltAWhirl
+// as a FlatRideAnimationProgram for Vehicle::UpdateFlatRideGeneric(). Used by TiltAWhirl
 // to validate the generalized path against this known-good baseline before any
 // multi-phase/multi-program ride is authored.
 // Every phase completion increments the shared, never-reset-mid-cycle NumRotations
-// counter (see UpdateRotatingGeneric). Only the Loop phase checks it: Start always
+// counter (see UpdateFlatRideGeneric). Only the Loop phase checks it: Start always
 // advances to Loop after one pass, Loop replays itself until NumRotations reaches
 // ride.rotations and then advances to End, and End always advances to arriving -
 // matching UpdateRotatingDefault's Start->Loop(xN)->End walk for these tables.

@@ -28,7 +28,7 @@ constexpr RideTypeDescriptor FreestyleRTD =
     .Category = RideCategory::thrill,
     .StartTrackPiece = TrackElemType::flatTrack6x6,
     .TrackPaintFunctions = TrackDrawerDescriptor({
-        .trackStyle = TrackStyle::genericRotatingFlatRide,
+        .trackStyle = TrackStyle::flatRideGeneric,
         .enabledTrackGroups = {},
         .extraTrackGroups = {},
     }),

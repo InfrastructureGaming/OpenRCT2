@@ -21,7 +21,7 @@ constexpr RideTypeDescriptor TiltAWhirlRTD =
     .Category = RideCategory::thrill,
     .StartTrackPiece = TrackElemType::flatTrack6x6,
     .TrackPaintFunctions = TrackDrawerDescriptor({
-        .trackStyle = TrackStyle::genericRotatingFlatRide,
+        .trackStyle = TrackStyle::flatRideGeneric,
         .enabledTrackGroups = {},
         .extraTrackGroups = {},
     }),
@@ -73,7 +73,7 @@ constexpr RideTypeDescriptor TiltAWhirlRTD =
         // All 7 cars re-rendered at the new 243x170 size (see project_flat_ride memory).
         .RiderFrameStride = 7,
         // 6x6 footprint: cursor/trackOrigin tile is grid (2,2), one tile-width off from the
-        // true geometric center. PaintGenericRotatingFlatRide6x6 applies a +16,+16 world-unit
+        // true geometric center. PaintFlatRideGeneric6x6 applies a +16,+16 world-unit
         // shift (rotated per direction) to draw the sprite centered on the grid instead of on
         // the cursor tile — a small (<=16 unit) offset from the entity's exact position.
         // Re-rendered Core sprite is 243x170 (spriteWidth=122, spriteHeight=85), with
@@ -85,7 +85,7 @@ constexpr RideTypeDescriptor TiltAWhirlRTD =
         .InvalidationHeightAbove = 170,
         .InvalidationHeightBelow = 170,
         // Regression replication of the legacy Start/Loop/End MerryGoRound walk via
-        // UpdateRotatingGeneric (see VehicleData.cpp kTiltAWhirlPrograms) - validates the
+        // UpdateFlatRideGeneric (see VehicleData.cpp kTiltAWhirlPrograms) - validates the
         // generalized multi-phase/multi-program path before any new ride adopts it.
         .Programs = kTiltAWhirlPrograms,
         .NumPrograms = 1,

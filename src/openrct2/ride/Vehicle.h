@@ -353,7 +353,7 @@ private:
     void UpdateHauntedHouseOperating();
     void UpdateCrookedHouseOperating();
     void UpdateRotating();
-    void UpdateRotatingGeneric();
+    void UpdateFlatRideGeneric();
     void UpdateDeparting();
     void FinishDeparting();
     void UpdateTravelling();

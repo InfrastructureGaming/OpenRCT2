@@ -25,7 +25,7 @@ extern const TopSpinTimeToSpriteMap* kTopSpinTimeToSpriteMaps[];
 
 // A phase: a time-indexed sequence of raw flatRideAnimationFrame values into the
 // ride's combined FlatRideRotationDescriptor::FramesPerDir sprite sheet, terminated
-// by 0xFFFF. Used by Vehicle::UpdateRotatingGeneric() for rides whose
+// by 0xFFFF. Used by Vehicle::UpdateFlatRideGeneric() for rides whose
 // FlatRideRotationDescriptor::Programs is non-null.
 struct FlatRideAnimationPhase
 {

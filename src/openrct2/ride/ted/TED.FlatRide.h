@@ -270,7 +270,7 @@ namespace OpenRCT2::TrackMetadata
     // 0-5, clearance = ((row-2)*32, (col-2)*32). seq14 (row2,col2) is the cursor/trackOrigin
     // tile. Unlike 5×5, this grid is even and has no true geometric center — seq14 is the
     // tile nearest center, one tile-width off from the actual center point. The paint
-    // function (PaintGenericRotatingFlatRide6x6) computes per-tile rotation/edges
+    // function (PaintFlatRideGeneric6x6) computes per-tile rotation/edges
     // analytically from clearance rather than via a fixed lookup table.
     static constexpr SequenceDescriptor kFlatTrack6x6Seq0 = {
         .clearance = { -64, -64, 0, 0, { 0b1111, 0 }, {} },
@@ -694,7 +694,7 @@ namespace OpenRCT2::TrackMetadata
         .definition = { TrackGroup::flatRideBase, TrackPitch::none, TrackPitch::none, TrackRoll::none, TrackRoll::none, 0 },
         // IMPORTANT: sequences[0] MUST be the cursor tile (clearance 0,0) with trackOrigin flag —
         // see the ghost-removal explanation on kTEDFlatTrack5x5. Unlike 5x5, the remaining
-        // sequence ordering carries no lookup-table dependency (PaintGenericRotatingFlatRide6x6
+        // sequence ordering carries no lookup-table dependency (PaintFlatRideGeneric6x6
         // computes everything analytically from each sequence's own clearance), so idx 1-35
         // simply follow row-major order with idx 14 (the cursor tile) removed.
         .sequenceData = { 36,
@@ -716,7 +716,7 @@ namespace OpenRCT2::TrackMetadata
     // 7×7 flat ride base — 49 tiles. Odd dimension with true geometric center at seq24 (row3,col3).
     // Clearance: rows 0-6, x = (row-3)*32 → [-96,+96]; cols 0-6, y = (col-3)*32 → [-96,+96].
     // The cursor tile (0,0) IS the geometric center — no half-tile shift needed in the paint function.
-    // Paint function (PaintGenericRotatingFlatRide7x7) computes rotation/edges analytically.
+    // Paint function (PaintFlatRideGeneric7x7) computes rotation/edges analytically.
     static constexpr SequenceDescriptor kFlatTrack7x7Seq0 = {
         .clearance = { -96, -96, 0, 0, { 0b1111, 0 }, {} },
         .flags = { SequenceFlag::entranceConnectionNE, SequenceFlag::entranceConnectionNW, SequenceFlag::hasHeightMarker },
@@ -955,7 +955,7 @@ namespace OpenRCT2::TrackMetadata
     // 8×8 flat ride base — 64 tiles. Even dimension; cursor at row3,col3 (0,0), one tile
     // NE/NW of the geometric center — same asymmetry as 6×6. Clearance: rows 0-7,
     // x = (row-3)*32 → [-96,+128]; cols 0-7, y = (col-3)*32 → [-96,+128].
-    // The paint function (PaintGenericRotatingFlatRide8x8) applies a +16 shift (like 6×6)
+    // The paint function (PaintFlatRideGeneric8x8) applies a +16 shift (like 6×6)
     // to center the model on the 8×8 plot.
     static constexpr SequenceDescriptor kFlatTrack8x8Seq0 = {
         .clearance = { -96, -96, 0, 0, { 0b1111, 0 }, {} },

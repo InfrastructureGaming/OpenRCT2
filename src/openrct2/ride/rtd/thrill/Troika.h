@@ -21,7 +21,7 @@ constexpr RideTypeDescriptor TroikaRTD =
     .Category = RideCategory::thrill,
     .StartTrackPiece = TrackElemType::flatTrack8x8,
     .TrackPaintFunctions = TrackDrawerDescriptor({
-        .trackStyle = TrackStyle::genericRotatingFlatRide,
+        .trackStyle = TrackStyle::flatRideGeneric,
         .enabledTrackGroups = {},
         .extraTrackGroups = {},
     }),

@@ -17,22 +17,22 @@
 namespace OpenRCT2
 {
 
-// Generic data-driven flat ride type. Parkobjs that set "type": "generic_rotating_flat_ride"
+// Generic data-driven flat ride type. Parkobjs that set "type": "flat_ride_generic"
 // and include a "flatRideAnimation" JSON block get all paint/animation parameters from that
 // block rather than from a compiled per-ride RTD. This is the entry point for modders to add
-// new spinning flat rides without any C++ changes.
+// new flat rides without any C++ changes.
 //
 // FlatRideRotation is intentionally empty here (FramesPerDir = 0 = sentinel):
-// PaintGenericRotatingStructure and UpdateRotatingGeneric both call GetFlatRideDescriptor(),
+// PaintGenericRotatingStructure and UpdateFlatRideGeneric both call GetFlatRideDescriptor(),
 // which prefers RideObjectEntry::flatRideAnimation (set at parkobj load time) over this RTD.
 // The sentinel causes an early-return in the paint function if somehow a parkobj forgets to
 // include the "flatRideAnimation" block, rather than drawing garbage.
-constexpr RideTypeDescriptor GenericRotatingFlatRideRTD =
+constexpr RideTypeDescriptor FlatRideGenericRTD =
 {
     .Category = RideCategory::thrill,
     .StartTrackPiece = TrackElemType::flatTrack6x6,
     .TrackPaintFunctions = TrackDrawerDescriptor({
-        .trackStyle = TrackStyle::genericRotatingFlatRide,
+        .trackStyle = TrackStyle::flatRideGeneric,
         .enabledTrackGroups = {},
         .extraTrackGroups = {},
     }),
@@ -65,7 +65,7 @@ constexpr RideTypeDescriptor GenericRotatingFlatRideRTD =
     ),
     .ColourPreview = { SPR_RIDE_DESIGN_PREVIEW_MAGIC_CARPET_TRACK, SPR_RIDE_DESIGN_PREVIEW_MAGIC_CARPET_SUPPORTS },
     .ColourKey = RideColourKey::Ride,
-    .Name = "generic_rotating_flat_ride",
+    .Name = "flat_ride_generic",
     .RatingsData =
     {
         RatingsCalculationType::FlatRide,

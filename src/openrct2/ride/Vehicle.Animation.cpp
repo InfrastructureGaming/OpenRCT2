@@ -269,7 +269,7 @@ void Vehicle::UpdateRotating()
     const auto& rtd = GetRideTypeDescriptor(curRide->type);
     if (GetFlatRideDescriptor(*curRide).Programs != nullptr)
     {
-        UpdateRotatingGeneric();
+        UpdateFlatRideGeneric();
         return;
     }
 
@@ -352,7 +352,7 @@ void Vehicle::UpdateRotating()
  * Vehicle::UpdateWaitingToDepart). var_C0/sub_state are bounds-checked here since
  * var_C0 aliases other per-vehicle scratch fields used outside Status::rotating.
  */
-void Vehicle::UpdateRotatingGeneric()
+void Vehicle::UpdateFlatRideGeneric()
 {
     if (_vehicleBreakdown == Breakdown::safetyCutOut)
         return;
@@ -423,7 +423,7 @@ void Vehicle::UpdateRotatingGeneric()
 
     if (!advance)
     {
-        UpdateRotatingGeneric();
+        UpdateFlatRideGeneric();
         return;
     }
 
@@ -440,7 +440,7 @@ void Vehicle::UpdateRotatingGeneric()
     if (program.Phases[sub_state].ResetRotationsOnEntry)
         NumRotations = 0;
 
-    UpdateRotatingGeneric();
+    UpdateFlatRideGeneric();
 }
 
 /**
