@@ -41,6 +41,14 @@ namespace OpenRCT2::CustomRideLoader
         // Set backing ride type so the New Ride window knows which object provides the vehicle entry.
         rtd.BackingRideType = RIDE_TYPE_FLAT_RIDE_GENERIC;
 
+        std::string authorStr = manifest.value("author", "");
+        if (!authorStr.empty())
+            rtd.CustomAuthor = LanguageAllocateObjectString(authorStr);
+
+        int64_t cost = manifest.value("cost", int64_t(0));
+        if (cost > 0)
+            rtd.CustomBuildCost = cost * 10; // manifest is whole-pound; money64 uses 1 decimal place
+
         // Optional ratings overrides from manifest (whole number, 0-9).
         if (manifest.contains("ratings"))
         {

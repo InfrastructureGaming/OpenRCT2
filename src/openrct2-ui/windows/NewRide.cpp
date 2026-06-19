@@ -1001,9 +1001,32 @@ namespace OpenRCT2::Ui::Windows
         {
             const auto& rtd = GetRideTypeDescriptor(item.Type);
             auto ft = Formatter();
+
+            // Name and description
             ft.Add<StringId>(rtd.Naming.Name);
             ft.Add<StringId>(rtd.Naming.Description);
             drawTextWrapped(rt, screenPos, textWidth, STR_NEW_RIDE_NAME_AND_DESCRIPTION, ft);
+
+            // Author (right-aligned, same row as name)
+            if (rtd.CustomAuthor != kStringIdNone)
+            {
+                ft = Formatter();
+                ft.Add<StringId>(STR_AUTHOR_STRING);
+                ft.Add<const utf8*>(LanguageGetString(rtd.CustomAuthor));
+                drawTextEllipsised(
+                    rt, screenPos + ScreenCoordsXY{ textWidth, 0 }, kWindowSize.width - 2,
+                    STR_WINDOW_COLOUR_2_STRINGID, ft, { TextAlignment::right });
+            }
+
+            // Cost (right-aligned, bottom row) — only when the park uses money
+            if (rtd.CustomBuildCost > 0 && !(getGameState().park.flags & PARK_FLAGS_NO_MONEY))
+            {
+                ft = Formatter();
+                ft.Add<money64>(rtd.CustomBuildCost);
+                drawText(
+                    rt, screenPos + ScreenCoordsXY{ textWidth - 14, 51 }, STR_NEW_RIDE_COST, ft,
+                    { TextAlignment::right });
+            }
         }
 
         void DrawRideInformation(RenderTarget& rt, RideSelection item, const ScreenCoordsXY& screenPos, int32_t textWidth)

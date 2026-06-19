@@ -611,6 +611,11 @@ struct RideTypeDescriptor
     // kRideTypeNull for all built-in types.
     ride_type_t BackingRideType{ kRideTypeNull };
 
+    // Custom ride display fields. StringId allocated via LanguageAllocateObjectString at load time.
+    // kStringIdNone and 0 are the "not set" sentinels for built-in types.
+    StringId CustomAuthor{ kStringIdNone };
+    money64 CustomBuildCost{ 0 };
+
     /** @deprecated */
     bool SupportsTrackGroup(OpenRCT2::TrackGroup trackGroup) const;
     ResearchCategory GetResearchCategory() const;
