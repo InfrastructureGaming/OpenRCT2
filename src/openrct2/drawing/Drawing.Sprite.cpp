@@ -984,10 +984,24 @@ void FASTCALL GfxDrawSpriteRawMaskedSoftware(
         return;
     }
 
-    // Must have transparency in order to pass check
+    // Both images must carry the hasTransparency flag for the full flat-pixel masking path below.
+    // If either image is in RLE/wideRLE format (no hasTransparency), fall back to an unmasked
+    // draw — but clamp to the mask's bounding box so large sprites such as flat-ride animation
+    // frames used as ride-picker thumbnails don't overflow adjacent scroll cells. This gives the
+    // same footprint as proper masking and matches OpenGL's DrawSpriteRawMasked behaviour.
     if (!imgMask->flags.has(G1Flag::hasTransparency) || !imgColour->flags.has(G1Flag::hasTransparency))
     {
-        GfxDrawSpriteSoftware(rt, colourImage, scrCoords);
+        ScreenCoordsXY maskOrigin = scrCoords + ScreenCoordsXY{ imgMask->xOffset, imgMask->yOffset };
+        int32_t clipLeft   = std::max<int32_t>(rt.x, maskOrigin.x);
+        int32_t clipTop    = std::max<int32_t>(rt.y, maskOrigin.y);
+        int32_t clipRight  = std::min<int32_t>(rt.x + rt.width,  maskOrigin.x + imgMask->width);
+        int32_t clipBottom = std::min<int32_t>(rt.y + rt.height, maskOrigin.y + imgMask->height);
+        if (clipLeft < clipRight && clipTop < clipBottom)
+        {
+            auto clipped = rt.Crop(
+                { clipLeft, clipTop }, { clipRight - clipLeft, clipBottom - clipTop });
+            GfxDrawSpriteSoftware(clipped, colourImage, scrCoords);
+        }
         return;
     }
 
