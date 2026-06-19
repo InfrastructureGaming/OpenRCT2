@@ -607,6 +607,10 @@ struct RideTypeDescriptor
 
     FlatRideRotationDescriptor FlatRideRotation{};
 
+    // For custom ride types: the built-in ride type whose vehicle object provides the preview image and car entry.
+    // kRideTypeNull for all built-in types.
+    ride_type_t BackingRideType{ kRideTypeNull };
+
     /** @deprecated */
     bool SupportsTrackGroup(OpenRCT2::TrackGroup trackGroup) const;
     ResearchCategory GetResearchCategory() const;

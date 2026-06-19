@@ -473,6 +473,7 @@
     <ClInclude Include="ride\RideAudio.h" />
     <ClInclude Include="ride\RideColour.h" />
     <ClInclude Include="ride\RideBreakdownMap.h" />
+    <ClInclude Include="ride\CustomRideLoader.h" />
     <ClInclude Include="ride\RideConstruction.h" />
     <ClInclude Include="ride\RideData.h" />
     <ClInclude Include="ride\RideTypeRegistry.h" />
@@ -1166,6 +1167,7 @@
     <ClCompile Include="ride\CarEntry.cpp" />
     <ClCompile Include="ride\MazeCost.cpp" />
     <ClCompile Include="ride\Ride.cpp" />
+    <ClCompile Include="ride\CustomRideLoader.cpp" />
     <ClCompile Include="ride\RideAudio.cpp" />
     <ClCompile Include="ride\RideConstruction.cpp" />
     <ClCompile Include="ride\RideData.cpp" />

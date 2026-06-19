@@ -63,6 +63,7 @@
 #include "platform/Platform.h"
 #include "profiling/Profiling.h"
 #include "rct2/RCT2.h"
+#include "ride/CustomRideLoader.h"
 #include "ride/TrackDesignRepository.h"
 #include "scenario/Scenario.h"
 #include "scenario/ScenarioRepository.h"
@@ -609,6 +610,7 @@ namespace OpenRCT2
 
             OpenProgress(STR_LOADING_GENERIC);
             Audio::LoadAudioObjects();
+            CustomRideLoader::LoadAll(*_env);
 
             OpenProgress(STR_CHECKING_TRACK_DESIGN_FILES);
             _trackDesignRepository->Scan(currentLanguage);

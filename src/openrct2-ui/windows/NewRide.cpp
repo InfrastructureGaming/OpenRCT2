@@ -37,6 +37,7 @@
 #include <openrct2/object/RideObject.h>
 #include <openrct2/rct1/RCT1.h>
 #include <openrct2/ride/RideData.h>
+#include <openrct2/ride/RideTypeRegistry.h>
 #include <openrct2/ride/TrackData.h>
 #include <openrct2/ride/TrackDesignRepository.h>
 #include <openrct2/ride/ted/TrackElementDescriptor.h>
@@ -52,7 +53,7 @@ namespace OpenRCT2::Ui::Windows
     static constexpr StringId WindowTitle = kStringIdNone;
     static constexpr int32_t kWindowHeightResearch = 194;
     static constexpr int32_t RideListItemsMax = kMaxRideObjects;
-    static constexpr int32_t RideTabCount = 6;
+    static constexpr int32_t RideTabCount = 7;
     static constexpr int32_t GroupByTrackTypeWidth = 172;
     static constexpr int32_t kScrollItemSize = 116;
     static constexpr int32_t kMinColCount = 5;
@@ -194,6 +195,7 @@ namespace OpenRCT2::Ui::Windows
         THRILL_TAB,
         WATER_TAB,
         SHOP_TAB,
+        CUSTOM_TAB,
         RESEARCH_TAB,
         TAB_COUNT,
     };
@@ -213,6 +215,7 @@ namespace OpenRCT2::Ui::Windows
         WIDX_TAB_5,
         WIDX_TAB_6,
         WIDX_TAB_7,
+        WIDX_TAB_8,
         WIDX_RIDE_LIST,
 
         WIDX_CURRENTLY_IN_DEVELOPMENT_GROUP,
@@ -238,7 +241,8 @@ namespace OpenRCT2::Ui::Windows
         makeTab   ({ 96,  17},                                                                                STR_THRILL_RIDES_TIP                                           ),
         makeTab   ({127,  17},                                                                                STR_WATER_RIDES_TIP                                            ),
         makeTab   ({158,  17},                                                                                STR_SHOPS_STALLS_TIP                                           ),
-        makeTab   ({189,  17},                                                                                STR_RESEARCH_AND_DEVELOPMENT_TIP                               ),
+        makeTab   ({189,  17},                                                                                STR_CUSTOM_RIDES_TIP                                           ),
+        makeTab   ({220,  17},                                                                                STR_RESEARCH_AND_DEVELOPMENT_TIP                               ),
         makeWidget({  3,  62},             {595, 256},         WidgetType::scroll,   WindowColour::secondary, SCROLL_VERTICAL                                                ),
         makeWidget({  3,  47},             {290,  70},         WidgetType::groupbox, WindowColour::tertiary,  STR_CURRENTLY_IN_DEVELOPMENT                                   ),
         makeWidget({  3, 124},             {290,  65},         WidgetType::groupbox, WindowColour::tertiary,  STR_LAST_DEVELOPMENT                                           ),
@@ -259,6 +263,7 @@ namespace OpenRCT2::Ui::Windows
         STR_NEW_THRILL_RIDES,         // THRILL_TAB
         STR_NEW_WATER_RIDES,          // WATER_TAB
         STR_NEW_SHOPS_STALLS,         // SHOP_TAB
+        STR_NEW_CUSTOM_RIDES,         // CUSTOM_TAB
         STR_RESEARCH_AND_DEVELOPMENT, // RESEARCH_TAB
     };
     static_assert(std::size(RideTitles) == TAB_COUNT);
@@ -270,6 +275,7 @@ namespace OpenRCT2::Ui::Windows
         72, // THRILL_TAB
         24, // WATER_TAB
         28, // SHOP_TAB
+        72, // CUSTOM_TAB
         16, // RESEARCH_TAB
     };
     static_assert(std::size(TabAnimationLoops) == TAB_COUNT);
@@ -281,6 +287,7 @@ namespace OpenRCT2::Ui::Windows
         4, // THRILL_TAB
         4, // WATER_TAB
         4, // SHOP_TAB
+        4, // CUSTOM_TAB
         2, // RESEARCH_TAB
     };
     static_assert(std::size(TabAnimationDivisor) == TAB_COUNT);
@@ -405,7 +412,7 @@ namespace OpenRCT2::Ui::Windows
 
         void onMouseDown(WidgetIndex widgetIndex) override
         {
-            if (widgetIndex >= WIDX_TAB_1 && widgetIndex <= WIDX_TAB_7)
+            if (widgetIndex >= WIDX_TAB_1 && widgetIndex <= WIDX_TAB_8)
             {
                 setPage(widgetIndex - WIDX_TAB_1);
             }
@@ -418,11 +425,11 @@ namespace OpenRCT2::Ui::Windows
             setWidgetPressed(WIDX_GROUP_BY_TRACK_TYPE, !Config::Get().interface.listRideVehiclesSeparately);
 
             widgets[WIDX_TITLE].text = RideTitles[_currentTab];
-            widgets[WIDX_TAB_7].type = WidgetType::tab;
+            widgets[WIDX_TAB_8].type = WidgetType::tab;
             widgets[WIDX_FILTER_TEXT_BOX].string = _filter.data();
 
             if (gLegacyScene == LegacyScene::trackDesigner)
-                widgets[WIDX_TAB_7].type = WidgetType::empty;
+                widgets[WIDX_TAB_8].type = WidgetType::empty;
 
             if (_currentTab == RESEARCH_TAB)
             {
@@ -632,6 +639,13 @@ namespace OpenRCT2::Ui::Windows
         void UpdateVehicleAvailability(ride_type_t rideType)
         {
             _vehicleAvailability.clear();
+            if (GetRideTypeRegistry().IsCustom(rideType))
+            {
+                auto descStr = LanguageGetString(GetRideTypeDescriptor(rideType).Naming.Description);
+                if (descStr != nullptr)
+                    _vehicleAvailability = descStr;
+                return;
+            }
             if (GetRideTypeDescriptor(rideType).flags.has(RtdFlag::listVehiclesSeparately))
             {
                 return;
@@ -668,7 +682,13 @@ namespace OpenRCT2::Ui::Windows
         {
             auto& objMgr = GetContext()->GetObjectManager();
             auto obj = objMgr.GetLoadedObject<RideObject>(rideSelection.EntryIndex);
-            return obj == nullptr ? kImageIndexUndefined : obj->GetPreviewImage(rideSelection.Type);
+            if (obj == nullptr)
+                return kImageIndexUndefined;
+            // Custom types borrow a built-in vehicle object; use its backing ride type for image lookup.
+            auto imageRideType = GetRideTypeRegistry().IsCustom(rideSelection.Type)
+                ? GetRideTypeDescriptor(rideSelection.Type).BackingRideType
+                : rideSelection.Type;
+            return obj->GetPreviewImage(imageRideType);
         }
 
         void PopulateRideList()
@@ -677,21 +697,60 @@ namespace OpenRCT2::Ui::Windows
             RideSelection* nextListItem = _windowNewRideListItems;
             RideSelection* listEnd = _windowNewRideListItems + RideListItemsMax;
 
-            // For each ride type in the view order list
-            for (int32_t i = 0; i < static_cast<int32_t>(std::size(RideTypeViewOrder)); i++)
+            if (_currentTab == CUSTOM_TAB)
             {
-                auto rideType = RideTypeViewOrder[i];
-                if (rideType == kRideTypeNull)
-                    continue;
+                nextListItem = IterateOverCustomRideTypes(nextListItem, listEnd);
+            }
+            else
+            {
+                // For each ride type in the view order list
+                for (int32_t i = 0; i < static_cast<int32_t>(std::size(RideTypeViewOrder)); i++)
+                {
+                    auto rideType = RideTypeViewOrder[i];
+                    if (rideType == kRideTypeNull)
+                        continue;
 
-                if (EnumValue(GetRideTypeDescriptor(rideType).Category) != currentCategory)
-                    continue;
+                    if (EnumValue(GetRideTypeDescriptor(rideType).Category) != currentCategory)
+                        continue;
 
-                nextListItem = IterateOverRideType(rideType, nextListItem, listEnd);
+                    nextListItem = IterateOverRideType(rideType, nextListItem, listEnd);
+                }
             }
 
             nextListItem->Type = kRideTypeNull;
             nextListItem->EntryIndex = kObjectEntryIndexNull;
+        }
+
+        RideSelection* IterateOverCustomRideTypes(RideSelection* nextListItem, RideSelection* listEnd)
+        {
+            auto& registry = GetRideTypeRegistry();
+            auto& objManager = GetContext()->GetObjectManager();
+
+            // Find the flat ride generic vehicle entry to use as the preview object for all custom types
+            auto& genericEntries = objManager.GetAllRideEntries(RIDE_TYPE_FLAT_RIDE_GENERIC);
+            ObjectEntryIndex previewEntry = genericEntries.empty() ? kObjectEntryIndexNull : genericEntries.front();
+
+            for (uint32_t i = RIDE_TYPE_COUNT; i < registry.Count(); i++)
+            {
+                auto rideType = static_cast<ride_type_t>(i);
+                const auto& rtd = registry.Get(rideType);
+
+                if (!_filter.empty())
+                {
+                    auto rideName = LanguageGetString(rtd.Naming.Name);
+                    if (!String::contains(u8string_view(rideName), _filter, true))
+                        continue;
+                }
+
+                if (nextListItem >= listEnd)
+                    break;
+
+                nextListItem->Type = rideType;
+                nextListItem->EntryIndex = previewEntry;
+                nextListItem++;
+            }
+
+            return nextListItem;
         }
 
         RideSelection* IterateOverRideType(ride_type_t rideType, RideSelection* nextListItem, RideSelection* listEnd)
@@ -942,6 +1001,8 @@ namespace OpenRCT2::Ui::Windows
         {
             auto& objMgr = GetContext()->GetObjectManager();
             const auto* rideObj = objMgr.GetLoadedObject<RideObject>(item.EntryIndex);
+            if (rideObj == nullptr)
+                return;
             const auto& rideEntry = rideObj->GetEntry();
             RideNaming rideNaming = GetRideNaming(item.Type, &rideEntry);
             auto ft = Formatter();
@@ -971,7 +1032,7 @@ namespace OpenRCT2::Ui::Windows
                 }
             }
 
-            if (_currentTab != SHOP_TAB)
+            if (_currentTab != SHOP_TAB && _currentTab != CUSTOM_TAB)
             {
                 auto count = GetNumTrackDesigns(item);
                 auto designCountStringId = GetDesignsAvailableStringId(count);
@@ -1000,8 +1061,9 @@ namespace OpenRCT2::Ui::Windows
                 drawText(rt, screenPos + ScreenCoordsXY{ textWidth - 14, 51 }, stringId, ft, { TextAlignment::right });
             }
 
-            // Draw object author(s) if debugging tools are active
-            if (Config::Get().general.debuggingTools && !rideObj->GetAuthors().empty())
+            // Draw object author(s) if debugging tools are active (skip for custom types — rideObj is the backing vehicle)
+            if (!GetRideTypeRegistry().IsCustom(item.Type) && Config::Get().general.debuggingTools
+                && !rideObj->GetAuthors().empty())
             {
                 const auto& authors = rideObj->GetAuthors();
 
@@ -1050,6 +1112,7 @@ namespace OpenRCT2::Ui::Windows
             DrawTabImage(rt, THRILL_TAB, SPR_TAB_RIDES_THRILL_0);
             DrawTabImage(rt, WATER_TAB, SPR_TAB_RIDES_WATER_0);
             DrawTabImage(rt, SHOP_TAB, SPR_TAB_RIDES_SHOP_0);
+            DrawTabImage(rt, CUSTOM_TAB, SPR_TAB_RIDES_THRILL_0);
             DrawTabImage(rt, RESEARCH_TAB, SPR_TAB_FINANCES_RESEARCH_0);
         }
 

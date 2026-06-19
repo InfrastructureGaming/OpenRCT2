@@ -30,6 +30,7 @@
 #include "../profiling/Profiling.h"
 #include "../ride/Ride.h"
 #include "../ride/RideData.h"
+#include "../ride/RideTypeRegistry.h"
 #include "../ride/RideEntry.h"
 #include "../ride/TrackData.h"
 #include "../scenario/Scenario.h"
@@ -563,6 +564,8 @@ bool ResearchIsInvented(ObjectType objectType, ObjectEntryIndex index)
 
 bool RideTypeIsInvented(ride_type_t rideType)
 {
+    if (GetRideTypeRegistry().IsCustom(rideType))
+        return true;
     return RideTypeIsValid(rideType) ? _researchedRideTypes[rideType] : false;
 }
 
@@ -576,6 +579,8 @@ bool RideEntryIsInvented(ObjectEntryIndex rideEntryIndex)
 
 void RideTypeSetInvented(ride_type_t rideType)
 {
+    if (GetRideTypeRegistry().IsCustom(rideType))
+        return;
     if (RideTypeIsValid(rideType))
     {
         _researchedRideTypes[rideType] = true;
