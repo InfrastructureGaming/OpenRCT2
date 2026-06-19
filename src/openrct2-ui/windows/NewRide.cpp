@@ -275,7 +275,7 @@ namespace OpenRCT2::Ui::Windows
         72, // THRILL_TAB
         24, // WATER_TAB
         28, // SHOP_TAB
-        72, // CUSTOM_TAB
+        20, // CUSTOM_TAB
         16, // RESEARCH_TAB
     };
     static_assert(std::size(TabAnimationLoops) == TAB_COUNT);
@@ -997,8 +997,23 @@ namespace OpenRCT2::Ui::Windows
             widgetScrollUpdateThumbs(*this, WIDX_RIDE_LIST);
         }
 
+        void DrawCustomRideInformation(RenderTarget& rt, RideSelection item, const ScreenCoordsXY& screenPos, int32_t textWidth)
+        {
+            const auto& rtd = GetRideTypeDescriptor(item.Type);
+            auto ft = Formatter();
+            ft.Add<StringId>(rtd.Naming.Name);
+            ft.Add<StringId>(rtd.Naming.Description);
+            drawTextWrapped(rt, screenPos, textWidth, STR_NEW_RIDE_NAME_AND_DESCRIPTION, ft);
+        }
+
         void DrawRideInformation(RenderTarget& rt, RideSelection item, const ScreenCoordsXY& screenPos, int32_t textWidth)
         {
+            if (GetRideTypeRegistry().IsCustom(item.Type))
+            {
+                DrawCustomRideInformation(rt, item, screenPos, textWidth);
+                return;
+            }
+
             auto& objMgr = GetContext()->GetObjectManager();
             const auto* rideObj = objMgr.GetLoadedObject<RideObject>(item.EntryIndex);
             if (rideObj == nullptr)
@@ -1112,7 +1127,7 @@ namespace OpenRCT2::Ui::Windows
             DrawTabImage(rt, THRILL_TAB, SPR_TAB_RIDES_THRILL_0);
             DrawTabImage(rt, WATER_TAB, SPR_TAB_RIDES_WATER_0);
             DrawTabImage(rt, SHOP_TAB, SPR_TAB_RIDES_SHOP_0);
-            DrawTabImage(rt, CUSTOM_TAB, SPR_TAB_RIDES_THRILL_0);
+            DrawTabImage(rt, CUSTOM_TAB, SPR_TAB_RIDES_TRANSPORT_0);
             DrawTabImage(rt, RESEARCH_TAB, SPR_TAB_FINANCES_RESEARCH_0);
         }
 
