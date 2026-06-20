@@ -21,6 +21,7 @@ namespace OpenRCT2
 
         const uint32_t index = RIDE_TYPE_COUNT + static_cast<uint32_t>(_custom.size());
         _idToIndex.emplace(std::string(stringId), index);
+        _stringIds.push_back(std::string(stringId));
         _custom.push_back(std::move(descriptor));
         return index;
     }
@@ -43,6 +44,16 @@ namespace OpenRCT2
         if (it != _idToIndex.end())
             return it->second;
         return std::nullopt;
+    }
+
+    std::string_view RideTypeRegistry::GetStringId(uint32_t index) const
+    {
+        if (index < RIDE_TYPE_COUNT)
+            return {};
+        const uint32_t customIndex = index - RIDE_TYPE_COUNT;
+        if (customIndex < static_cast<uint32_t>(_stringIds.size()))
+            return _stringIds[customIndex];
+        return {};
     }
 
     uint32_t RideTypeRegistry::Count() const

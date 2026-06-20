@@ -48,6 +48,7 @@
 #include "../peep/RideUseSystem.h"
 #include "../rct2/RCT2.h"
 #include "../ride/RideManager.hpp"
+#include "../ride/RideTypeRegistry.h"
 #include "../ride/ShopItem.h"
 #include "../ride/Track.h"
 #include "../ride/Vehicle.h"
@@ -71,7 +72,9 @@
 #include <ctime>
 #include <numeric>
 #include <optional>
+#include <set>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 using namespace OpenRCT2;
@@ -101,6 +104,7 @@ namespace OpenRCT2
         restrictedObjects       = 0x37,
         pluginStorage           = 0x38,
         preview                 = 0x39,
+        customRideTypes         = 0x3a,
         packedObjects           = 0x80
         // clang-format on
     };
@@ -117,6 +121,11 @@ namespace OpenRCT2
         ObjectEntryIndex _pathToSurfaceMap[kMaxPathObjects];
         ObjectEntryIndex _pathToQueueSurfaceMap[kMaxPathObjects];
         ObjectEntryIndex _pathToRailingsMap[kMaxPathObjects];
+        // Maps stored runtime index → current runtime index for custom ride types.
+        // Built from the customRideTypes chunk on load; empty for old parks without the chunk.
+        std::unordered_map<ride_type_t, ride_type_t> _customRideTypeRemap;
+        // Ride IDs whose custom type could not be resolved; cleared and removed after full load.
+        std::vector<RideId> _orphanedCustomRideIds;
 
         void ThrowIfIncompatibleVersion()
         {
@@ -160,6 +169,8 @@ namespace OpenRCT2
             auto& os = *_os;
             ReadWriteTilesChunk(gameState, os);
             ReadWriteBannersChunk(gameState, os);
+            // Custom ride type chunk must be read before rides so the remap is ready.
+            ReadWriteCustomRideTypesChunk(gameState, os);
             ReadWriteRidesChunk(gameState, os);
             ReadWriteEntitiesChunk(gameState, os);
             ReadWriteScenarioChunk(gameState, os);
@@ -177,8 +188,38 @@ namespace OpenRCT2
                 UpdateTrackElementsRideType();
             }
 
+            // Remove rides whose custom type is no longer available or whose built-in slot is obsolete.
+            RemoveOrphanedRides(gameState);
+
             // Initial cash will eventually be removed
             gameState.scenarioOptions.initialCash = gameState.park.cash;
+        }
+
+        void RemoveOrphanedRides(GameState_t& gameState)
+        {
+            // Collect obsolete built-in type rides.
+            for (auto& ride : RideManager(gameState))
+            {
+                if (GetRideTypeDescriptor(ride.type).flags.has(RtdFlag::isObsolete))
+                {
+                    LOG_WARNING(
+                        "Ride '%s' (id=%u) uses an obsolete built-in ride type (%u); it will be removed.",
+                        ride.customName.empty() ? "unnamed" : ride.customName.c_str(), ride.id.ToUnderlying(),
+                        static_cast<uint32_t>(ride.type));
+                    _orphanedCustomRideIds.push_back(ride.id);
+                }
+            }
+
+            // Remove all orphaned rides (vehicles first, then the ride slot).
+            for (auto rideId : _orphanedCustomRideIds)
+            {
+                auto* ride = GetRide(rideId);
+                if (ride == nullptr)
+                    continue;
+                ride->removeVehicles();
+                RideDelete(rideId);
+            }
+            _orphanedCustomRideIds.clear();
         }
 
         void Save(GameState_t& gameState, IStream& stream, int16_t compressionLevel)
@@ -194,6 +235,7 @@ namespace OpenRCT2
             ReadWriteObjectsChunk(os);
             ReadWriteTilesChunk(gameState, os);
             ReadWriteBannersChunk(gameState, os);
+            ReadWriteCustomRideTypesChunk(gameState, os);
             ReadWriteRidesChunk(gameState, os);
             ReadWriteEntitiesChunk(gameState, os);
             ReadWriteScenarioChunk(gameState, os);
@@ -1378,6 +1420,56 @@ namespace OpenRCT2
             cs.readWrite(banner.position.y);
         }
 
+        void ReadWriteCustomRideTypesChunk(GameState_t& gameState, OrcaStream& os)
+        {
+            os.readWriteChunk(ParkFileChunkType::customRideTypes, [this, &gameState](OrcaStream::ChunkStream& cs) {
+                // Each entry: stored runtime index + string ID (folder name used to register the custom type).
+                std::vector<std::pair<uint32_t, std::string>> entries;
+
+                if (cs.getMode() == OrcaStream::Mode::writing)
+                {
+                    auto& registry = GetRideTypeRegistry();
+                    std::set<ride_type_t> seen;
+                    for (const auto& ride : RideManager(gameState))
+                    {
+                        if (ride.type < RIDE_TYPE_COUNT || seen.count(ride.type))
+                            continue;
+                        seen.insert(ride.type);
+                        auto sv = registry.GetStringId(ride.type);
+                        if (!sv.empty())
+                            entries.push_back({ static_cast<uint32_t>(ride.type), std::string(sv) });
+                    }
+                }
+
+                cs.readWriteVector(entries, [&cs](std::pair<uint32_t, std::string>& e) {
+                    cs.readWrite(e.first);
+                    cs.readWrite(e.second);
+                });
+
+                if (cs.getMode() == OrcaStream::Mode::reading)
+                {
+                    _customRideTypeRemap.clear();
+                    auto& registry = GetRideTypeRegistry();
+                    for (const auto& e : entries)
+                    {
+                        auto found = registry.FindByStringId(e.second);
+                        if (found.has_value())
+                        {
+                            _customRideTypeRemap[static_cast<ride_type_t>(e.first)]
+                                = static_cast<ride_type_t>(found.value());
+                        }
+                        else
+                        {
+                            _customRideTypeRemap[static_cast<ride_type_t>(e.first)] = kRideTypeNull;
+                            LOG_WARNING(
+                                "Custom ride type '%s' is no longer available; rides of this type will be removed.",
+                                e.second.c_str());
+                        }
+                    }
+                }
+            });
+        }
+
         void ReadWriteRidesChunk(GameState_t& gameState, OrcaStream& os)
         {
             const auto version = os.getHeader().targetVersion;
@@ -1409,7 +1501,7 @@ namespace OpenRCT2
                         }
                     }
                 }
-                cs.readWriteVector(rideIds, [&cs, &version, &os](RideId& rideId) {
+                cs.readWriteVector(rideIds, [this, &cs, &version, &os](RideId& rideId) {
                     // Ride ID
                     cs.readWrite(rideId);
 
@@ -1422,6 +1514,22 @@ namespace OpenRCT2
 
                     // Status
                     cs.readWrite(ride.type);
+                    if (cs.getMode() == OrcaStream::Mode::reading && ride.type >= RIDE_TYPE_COUNT)
+                    {
+                        auto it = _customRideTypeRemap.find(ride.type);
+                        if (it != _customRideTypeRemap.end())
+                        {
+                            if (it->second == kRideTypeNull)
+                                _orphanedCustomRideIds.push_back(rideId);
+                            else
+                                ride.type = it->second;
+                        }
+                        else
+                        {
+                            // No remap entry for this custom index (e.g. park saved before Phase 3).
+                            _orphanedCustomRideIds.push_back(rideId);
+                        }
+                    }
                     cs.readWrite(ride.subtype);
                     cs.readWrite(ride.mode);
                     cs.readWrite(ride.status);

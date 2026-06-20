@@ -102,7 +102,6 @@
 #include "rtd/thrill/LaunchedFreefall.h"
 #include "rtd/thrill/MagicCarpet.h"
 #include "rtd/thrill/Freestyle.h"
-#include "rtd/thrill/TiltAWhirl.h"
 #include "rtd/thrill/Troika.h"
 #include "rtd/thrill/FlatRideGeneric.h"
 #include "rtd/thrill/MotionSimulator.h"
@@ -362,7 +361,7 @@ constexpr RideTypeDescriptor kRideTypeDescriptors[RIDE_TYPE_COUNT] = {
     /* RIDE_TYPE_CLASSIC_STAND_UP_ROLLER_COASTER    */ ClassicStandUpRollerCoasterRTD,
     /* RIDE_TYPE_LSM_LAUNCHED_ROLLER_COASTER        */ LSMLaunchedRollerCoasterRTD,
     /* RIDE_TYPE_CLASSIC_WOODEN_TWISTER_ROLLER_COASTER */ ClassicWoodenTwisterRollerCoasterRTD,
-    /* RIDE_TYPE_TILT_A_WHIRL                          */ TiltAWhirlRTD,
+    /* RIDE_TYPE_TILT_A_WHIRL                          */ kObsoleteRTD,
     /* RIDE_TYPE_FREESTYLE                             */ FreestyleRTD,
     /* RIDE_TYPE_TROIKA                                */ TroikaRTD,
     /* RIDE_TYPE_FLAT_RIDE_GENERIC                     */ FlatRideGenericRTD,

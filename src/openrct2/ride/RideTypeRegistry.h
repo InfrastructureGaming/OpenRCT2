@@ -47,6 +47,9 @@ namespace OpenRCT2
         /** Resolve a string ID to its runtime index, if registered. */
         std::optional<uint32_t> FindByStringId(std::string_view stringId) const;
 
+        /** Returns the string ID (folder name) for a custom ride type index; empty for built-ins or out-of-range. */
+        std::string_view GetStringId(uint32_t index) const;
+
         /** Total registered type count: RIDE_TYPE_COUNT built-ins + any custom. */
         uint32_t Count() const;
 
@@ -55,6 +58,7 @@ namespace OpenRCT2
 
     private:
         std::vector<RideTypeDescriptor> _custom;
+        std::vector<std::string> _stringIds;
         std::unordered_map<std::string, uint32_t> _idToIndex;
     };
 
