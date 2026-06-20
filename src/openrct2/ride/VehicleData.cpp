@@ -372,42 +372,6 @@ const uint8_t* kMerryGoRoundTimeToSpriteMaps[] = {
     kMerryGoRoundAnimationEnd,
 };
 
-// FlatRideAnimationPhase::TimeToSpriteMap is now uint16_t* (0xFFFF terminator) to support
-// FramesPerDir > 255 (see Freestyle below). kMerryGoRoundAnimationStart/Loop/End stay
-// uint8_t[] for kMerryGoRoundTimeToSpriteMaps (real Merry-Go-Round rides, legacy path),
-// so derive widened uint16_t copies for kTiltAWhirlPhases via this helper, remapping the
-// 0xFF terminator to 0xFFFF. Avoids hand-transcribing ~300 values.
-template <std::size_t N>
-constexpr std::array<uint16_t, N> WidenAnimationFrameMap(const uint8_t (&src)[N])
-{
-    std::array<uint16_t, N> out{};
-    for (std::size_t i = 0; i < N; i++)
-        out[i] = (src[i] == 0xFF) ? 0xFFFF : src[i];
-    return out;
-}
-
-static constexpr auto kTiltAWhirlAnimationStart = WidenAnimationFrameMap(kMerryGoRoundAnimationStart);
-static constexpr auto kTiltAWhirlAnimationLoop  = WidenAnimationFrameMap(kMerryGoRoundAnimationLoop);
-static constexpr auto kTiltAWhirlAnimationEnd   = WidenAnimationFrameMap(kMerryGoRoundAnimationEnd);
-
-// Regression-safety replication of the hardcoded Start/Loop/End walk above, expressed
-// as a FlatRideAnimationProgram for Vehicle::UpdateFlatRideGeneric(). Used by TiltAWhirl
-// to validate the generalized path against this known-good baseline before any
-// multi-phase/multi-program ride is authored.
-// Every phase completion increments the shared, never-reset-mid-cycle NumRotations
-// counter (see UpdateFlatRideGeneric). Only the Loop phase checks it: Start always
-// advances to Loop after one pass, Loop replays itself until NumRotations reaches
-// ride.rotations and then advances to End, and End always advances to arriving -
-// matching UpdateRotatingDefault's Start->Loop(xN)->End walk for these tables.
-static constexpr FlatRideAnimationPhase kTiltAWhirlPhases[] = {
-    { kTiltAWhirlAnimationStart.data(), 1, false, false }, // 0: Start -> Loop
-    { kTiltAWhirlAnimationLoop.data(), 2, true, false },   // 1: Loop, repeats until ride.rotations -> End
-    { kTiltAWhirlAnimationEnd.data(), 0, false, true },    // 2: End -> arriving
-};
-
-const FlatRideAnimationProgram kTiltAWhirlPrograms[] = {
-    { kTiltAWhirlPhases, 3 },
-};
 
 template <uint16_t Start, uint16_t Count>
 constexpr std::array<uint16_t, static_cast<std::size_t>(Count) + 1> MakeSequentialFrameMap()

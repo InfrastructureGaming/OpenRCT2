@@ -148,7 +148,6 @@ namespace OpenRCT2::Ui::Windows
         // Thrill rides
         RIDE_TYPE_TWIST,
         RIDE_TYPE_MAGIC_CARPET,
-        RIDE_TYPE_TILT_A_WHIRL,
         RIDE_TYPE_FREESTYLE,
         RIDE_TYPE_TROIKA,
         RIDE_TYPE_FLAT_RIDE_GENERIC,

@@ -36,8 +36,7 @@ struct FlatRideAnimationPhase
     // Zero NumRotations when entering this phase, giving it an independent repeat
     // budget against ride.rotations. Needed when a program has more than one
     // RepeatUntilRotationsComplete phase (NumRotations is otherwise a single counter
-    // shared across the whole program). Default false preserves kTiltAWhirlPhases'
-    // single-counter behaviour exactly.
+    // shared across the whole program).
     bool ResetRotationsOnEntry = false;
 };
 
@@ -48,7 +47,6 @@ struct FlatRideAnimationProgram
     uint8_t NumPhases = 0;
 };
 
-extern const FlatRideAnimationProgram kTiltAWhirlPrograms[];
 extern const FlatRideAnimationProgram kFreestylePrograms[];
 extern const FlatRideAnimationProgram kTroikaPrograms[];
 
