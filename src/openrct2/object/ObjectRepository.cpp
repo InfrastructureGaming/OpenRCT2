@@ -87,6 +87,7 @@ namespace OpenRCT2
                   std::vector<std::string>{
                       env.GetDirectoryPath(DirBase::openrct2, DirId::objects),
                       env.GetDirectoryPath(DirBase::user, DirId::objects),
+                      env.GetDirectoryPath(DirBase::user, DirId::customRides),
                   })
         {
         }
@@ -161,7 +162,10 @@ namespace OpenRCT2
     private:
         bool IsTrackReadOnly(const std::string& path) const
         {
-            return String::startsWith(path, SearchPaths[0]) || String::startsWith(path, SearchPaths[1]);
+            for (const auto& sp : SearchPaths)
+                if (String::startsWith(path, sp))
+                    return true;
+            return false;
         }
     };
 

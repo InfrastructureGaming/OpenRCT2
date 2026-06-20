@@ -9,22 +9,38 @@
 
 #include "CustomRideLoader.h"
 
+#include "../Context.h"
 #include "../Diagnostic.h"
 #include "../PlatformEnvironment.h"
 #include "../core/FileSystem.hpp"
 #include "../core/Json.hpp"
 #include "../localisation/Language.h"
 #include "../localisation/StringIdType.h"
+#include "../object/ObjectManager.h"
 #include "Ride.h"
 #include "RideData.h"
 #include "RideTypeRegistry.h"
 #include "rtd/thrill/FlatRideGeneric.h"
 
+#include <list>
+#include <string>
+
 namespace OpenRCT2::CustomRideLoader
 {
+    // Persistent storage for const char* strings set on RideTypeDescriptor fields.
+    // std::list never invalidates pointers on push_back, so .c_str() is stable for the process lifetime.
+    static std::list<std::string> sStringPool;
+
+    static const char* PersistString(const std::string& s)
+    {
+        sStringPool.push_back(s);
+        return sStringPool.back().c_str();
+    }
     static RideTypeDescriptor BuildDescriptorFromManifest(const json_t& manifest)
     {
-        // Start from the flat ride generic defaults so all required fields are populated.
+        // All custom rides start from FlatRideGenericRTD. The parkobj provides all
+        // paint and animation parameters via its "flatRideAnimation" JSON block,
+        // keeping the ride fully self-contained with no dependency on C++ RTD data.
         RideTypeDescriptor rtd = FlatRideGenericRTD;
 
         // Allocate dynamic string IDs for name and description.
@@ -34,12 +50,16 @@ namespace OpenRCT2::CustomRideLoader
         rtd.Naming.Name = LanguageAllocateObjectString(nameStr);
         rtd.Naming.Description = descStr.empty() ? kStringIdNone : LanguageAllocateObjectString(descStr);
 
-        // Store the json id string so RideTypeRegistry can use it for dedup.
-        // Note: Name field (std::string_view) can't hold this; it's stored via the registry's id map.
+        // Name is a string_view into static data; clear it so the registry ID map is authoritative.
         rtd.Name = "";
 
-        // Set backing ride type so the New Ride window knows which object provides the vehicle entry.
+        // BackingRideType drives GetPreviewImage — must match what the vehicle parkobj
+        // declares in its ride_type[] array. Custom parkobjs always declare flat_ride_generic.
         rtd.BackingRideType = RIDE_TYPE_FLAT_RIDE_GENERIC;
+
+        std::string parkobjId = manifest.value("parkobj", "");
+        if (!parkobjId.empty())
+            rtd.CustomParkObjId = PersistString(parkobjId);
 
         std::string authorStr = manifest.value("author", "");
         if (!authorStr.empty())
@@ -47,7 +67,15 @@ namespace OpenRCT2::CustomRideLoader
 
         int64_t cost = manifest.value("cost", int64_t(0));
         if (cost > 0)
+        {
             rtd.CustomBuildCost = cost * 10; // manifest is whole-pound; money64 uses 1 decimal place
+
+            // Keep placement cost in sync with the display cost.
+            // TrackPlaceAction computes: placedCost = (TrackPrice * priceModifier) >> 16
+            // For flatTrack6x6: priceModifier = 1638400 = 25 * 65536.
+            // Invert: TrackPrice = (cost * 10 * 65536) / 1638400
+            rtd.BuildCosts.TrackPrice = (cost * 10LL * 65536LL) / 1638400LL;
+        }
 
         // Optional ratings overrides from manifest (whole number, 0-9).
         if (manifest.contains("ratings"))
@@ -88,7 +116,20 @@ namespace OpenRCT2::CustomRideLoader
         }
 
         auto rtd = BuildDescriptorFromManifest(manifest);
-        GetRideTypeRegistry().Register(rideId, std::move(rtd));
+        auto customType = GetRideTypeRegistry().Register(rideId, std::move(rtd));
+
+        // Force-load the vehicle object so it's indexed before any park opens.
+        const auto& finalRtd = GetRideTypeRegistry().Get(customType);
+        if (finalRtd.CustomParkObjId != nullptr)
+        {
+            auto& objManager = GetContext()->GetObjectManager();
+            Object* obj = objManager.LoadObject(finalRtd.CustomParkObjId);
+            if (obj == nullptr)
+                LOG_WARNING(
+                    "Custom ride '%s': parkobj '%s' not found in object repository", rideId.c_str(),
+                    finalRtd.CustomParkObjId);
+        }
+
         LOG_VERBOSE("Custom ride loaded: %s", rideId.c_str());
     }
 

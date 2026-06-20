@@ -726,9 +726,9 @@ namespace OpenRCT2::Ui::Windows
             auto& registry = GetRideTypeRegistry();
             auto& objManager = GetContext()->GetObjectManager();
 
-            // Find the flat ride generic vehicle entry to use as the preview object for all custom types
+            // Fallback preview entry if a custom ride's specific parkobj isn't loaded.
             auto& genericEntries = objManager.GetAllRideEntries(RIDE_TYPE_FLAT_RIDE_GENERIC);
-            ObjectEntryIndex previewEntry = genericEntries.empty() ? kObjectEntryIndexNull : genericEntries.front();
+            ObjectEntryIndex fallbackEntry = genericEntries.empty() ? kObjectEntryIndexNull : genericEntries.front();
 
             for (uint32_t i = RIDE_TYPE_COUNT; i < registry.Count(); i++)
             {
@@ -746,7 +746,15 @@ namespace OpenRCT2::Ui::Windows
                     break;
 
                 nextListItem->Type = rideType;
-                nextListItem->EntryIndex = previewEntry;
+                // Use the ride's own vehicle object for preview; fall back to generic if not loaded.
+                ObjectEntryIndex entryIndex = fallbackEntry;
+                if (rtd.CustomParkObjId != nullptr)
+                {
+                    auto specific = objManager.GetLoadedObjectEntryIndex(std::string_view(rtd.CustomParkObjId));
+                    if (specific != kObjectEntryIndexNull)
+                        entryIndex = specific;
+                }
+                nextListItem->EntryIndex = entryIndex;
                 nextListItem++;
             }
 

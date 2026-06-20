@@ -20,6 +20,7 @@
 #include "../ride/Ride.h"
 #include "../ride/RideData.h"
 #include "../ride/RideAudio.h"
+#include "../ride/RideTypeRegistry.h"
 #include "../ui/WindowManager.h"
 #include "BannerSceneryEntry.h"
 #include "LargeSceneryObject.h"
@@ -749,11 +750,29 @@ namespace OpenRCT2
 
         void ResetTypeToRideEntryIndexMap()
         {
+            // Pre-pass: ensure all custom ride parkobjs are loaded.
+            // When a park file is opened the object manager evicts objects not saved with that park;
+            // custom ride vehicles won't be in any existing park's object list. LoadObject is a no-op
+            // if the object is already present. If it's missing it loads it and recursively calls
+            // ResetTypeToRideEntryIndexMap — that nested call will find subsequent objects also missing
+            // and keep loading until all custom parkobjs are resident. Recursion depth is bounded by
+            // the number of registered custom rides (typically very small).
+            auto& registry = GetRideTypeRegistry();
+            for (uint32_t ci = RIDE_TYPE_COUNT; ci < registry.Count(); ci++)
+            {
+                const auto& rtd = registry.Get(ci);
+                if (rtd.CustomParkObjId != nullptr
+                    && GetLoadedObjectEntryIndex(std::string_view(rtd.CustomParkObjId)) == kObjectEntryIndexNull)
+                {
+                    LoadObject(std::string_view(rtd.CustomParkObjId));
+                }
+            }
+
             // Resize to cover all registered ride types (built-ins + any custom),
             // then clear each slot ready for repopulation below.
             _rideTypeToObjectMap.assign(GetRideTypeCount(), {});
 
-            // Build object lists
+            // Build object lists from loaded parkobjs.
             const auto maxRideObjects = static_cast<size_t>(getObjectEntryGroupCount(ObjectType::ride));
             for (size_t i = 0; i < maxRideObjects; i++)
             {
@@ -771,6 +790,21 @@ namespace OpenRCT2
                         v.push_back(static_cast<ObjectEntryIndex>(i));
                     }
                 }
+            }
+
+            // Populate custom ride type slots. Custom types aren't listed in any parkobj's ride_type[]
+            // array, so we resolve them from CustomParkObjId after the pre-pass guarantees they're loaded.
+            for (uint32_t ci = RIDE_TYPE_COUNT; ci < registry.Count(); ci++)
+            {
+                const auto& rtd = registry.Get(ci);
+                if (rtd.CustomParkObjId == nullptr)
+                    continue;
+                auto entryIndex = GetLoadedObjectEntryIndex(std::string_view(rtd.CustomParkObjId));
+                if (entryIndex == kObjectEntryIndexNull)
+                    continue;
+                if (ci >= _rideTypeToObjectMap.size())
+                    _rideTypeToObjectMap.resize(ci + 1);
+                _rideTypeToObjectMap[ci].push_back(entryIndex);
             }
         }
 
