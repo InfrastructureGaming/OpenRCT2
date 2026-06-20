@@ -448,9 +448,6 @@ enum class RtdFlag : uint8_t
     reverseInclineLaunchAffectsReliability,
 
     isDummyType,
-    // Slot was a real built-in ride type that has since been removed. The index is preserved to keep
-    // all higher indices stable. Park loader emits a warning and removes rides of this type.
-    isObsolete,
 };
 using RtdFlags = FlagHolder<uint64_t, RtdFlag>;
 
@@ -744,59 +741,6 @@ constexpr RideTypeDescriptor kDummyRTD =
     .UpdateLeaveEntrance = OpenRCT2::PeepUpdateRideLeaveEntranceDefault,
 };
 // clang-format on
-
-// Tombstone descriptor for a built-in ride type slot that has been removed.
-// The slot index is preserved to keep all higher indices stable.
-// Parks containing rides of this type emit a warning on load and the rides are removed.
-constexpr RideTypeDescriptor kObsoleteRTD =
-{
-    .Category = RideCategory::none,
-    .StartTrackPiece = OpenRCT2::TrackElemType::endStation,
-    .TrackPaintFunctions = {},
-    .InvertedTrackPaintFunctions = {},
-    .flags = { RtdFlag::isDummyType, RtdFlag::isObsolete },
-    .RideModes = EnumsToFlags(RideMode::continuousCircuit),
-    .DefaultMode = RideMode::continuousCircuit,
-    .OperatingSettings = {},
-    .TrackSpeedSettings = {},
-    .BoosterSettings = {},
-    .LegacyBoosterSettings = {},
-    .Naming = { kStringIdNone, kStringIdNone },
-    .NameConvention = { RideComponentType::Train, RideComponentType::Track, RideComponentType::Station },
-    .availableBreakdowns = {},
-    .Heights = { 12, 64, 0, 0, },
-    .MaxMass = 255,
-    .LiftData = { OpenRCT2::Audio::SoundId::null, 5, 5 },
-    .RatingsMultipliers = { 0, 0, 0 },
-    .UpkeepCosts = { 50, 1, 0, 0, 0, 0 },
-    .BuildCosts = { 0.00_GBP, 0.00_GBP, 1 },
-    .DefaultPrices = { 20, 20 },
-    .DefaultMusic = kMusicObjectGentle,
-    .PhotoItem = ShopItem::photo,
-    .BonusValue = 0,
-    .ColourPresets = kDefaultFlatRideColourPreset,
-    .ColourPreview = { kImageIndexUndefined, kImageIndexUndefined },
-    .ColourKey = RideColourKey::Ride,
-    .Name = "obsolete",
-    .RatingsData =
-    {
-        RatingsCalculationType::FlatRide,
-        { OpenRCT2::RideRating::make(1, 00), OpenRCT2::RideRating::make(1, 00), OpenRCT2::RideRating::make(1, 00) },
-        1,
-        -1,
-        false,
-        {
-            { RatingsModifierType::NoModifier, 0, 0, 0, 0 },
-        },
-    },
-    .UpdateRotating = UpdateRotatingDefault,
-    .LightFXAddLightsMagicVehicle = nullptr,
-    .StartRideMusic = OpenRCT2::RideAudio::DefaultStartRideMusicChannel,
-    .DesignCreateMode = TrackDesignCreateMode::Default,
-    .MusicUpdateFunction = DefaultMusicUpdate,
-    .Classification = RideClassification::ride,
-    .UpdateLeaveEntrance = OpenRCT2::PeepUpdateRideLeaveEntranceDefault,
-};
 
 /** Returns the descriptor for the given ride type index; falls back to kDummyRTD for invalid indices. */
 const RideTypeDescriptor& GetRideTypeDescriptor(ride_type_t rideType);

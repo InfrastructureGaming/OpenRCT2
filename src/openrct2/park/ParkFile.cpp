@@ -197,20 +197,7 @@ namespace OpenRCT2
 
         void RemoveOrphanedRides(GameState_t& gameState)
         {
-            // Collect obsolete built-in type rides.
-            for (auto& ride : RideManager(gameState))
-            {
-                if (GetRideTypeDescriptor(ride.type).flags.has(RtdFlag::isObsolete))
-                {
-                    LOG_WARNING(
-                        "Ride '%s' (id=%u) uses an obsolete built-in ride type (%u); it will be removed.",
-                        ride.customName.empty() ? "unnamed" : ride.customName.c_str(), ride.id.ToUnderlying(),
-                        static_cast<uint32_t>(ride.type));
-                    _orphanedCustomRideIds.push_back(ride.id);
-                }
-            }
-
-            // Remove all orphaned rides (vehicles first, then the ride slot).
+            // Remove all rides whose custom type could not be resolved on load.
             for (auto rideId : _orphanedCustomRideIds)
             {
                 auto* ride = GetRide(rideId);

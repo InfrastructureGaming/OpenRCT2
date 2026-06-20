@@ -47,8 +47,6 @@ struct FlatRideAnimationProgram
     uint8_t NumPhases = 0;
 };
 
-extern const FlatRideAnimationProgram kFreestylePrograms[];
-extern const FlatRideAnimationProgram kTroikaPrograms[];
 
 extern const uint8_t MotionSimulatorTimeToSpriteMap[];
 extern const int32_t MotionSimulatorTimeToSpriteMapCount;

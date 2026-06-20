@@ -3831,12 +3831,7 @@ STR_7031    :New Custom Rides
 STR_7032    :Custom rides
 STR_7102    :Base size 5 × 5
 STR_7103    :Base size 6 × 6
-STR_7104    :Freestyle
-STR_7105    :A compound-rotation ride that spins, tilts and spins riders through a long, varied program.
-STR_7106    :Long Program
 STR_7107    :Base size 7 × 7
 STR_7108    :Base size 8 × 8
-STR_7109    :Troika
-STR_7110    :A powerful triple-arm spinning ride with independently rotating gondola cars.
 STR_7111    :Custom Flat Ride
 STR_7112    :A modder-defined spinning flat ride with animation defined in a parkobj.

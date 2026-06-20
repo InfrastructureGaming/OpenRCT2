@@ -373,46 +373,6 @@ const uint8_t* kMerryGoRoundTimeToSpriteMaps[] = {
 };
 
 
-template <uint16_t Start, uint16_t Count>
-constexpr std::array<uint16_t, static_cast<std::size_t>(Count) + 1> MakeSequentialFrameMap()
-{
-    std::array<uint16_t, static_cast<std::size_t>(Count) + 1> out{};
-    for (uint16_t i = 0; i < Count; i++)
-        out[i] = static_cast<uint16_t>(Start + i);
-    out[Count] = 0xFFFF;
-    return out;
-}
-
-// Freestyle's "Long Program": a single continuous 3600-frame sequence (restraints
-// close/open baked in), frame 3599 visually matches frame 0 so the ride starts and ends
-// in the same configuration. Plays through once and ends the cycle (IsFinalPhase). The
-// Short Program (~2600 frames) will become operationOption 1 once rendered - append its
-// frame range after this one and bump NumPrograms to 2.
-static constexpr auto kFreestyleLongProgramFrames = MakeSequentialFrameMap<0, 3600>();
-
-static constexpr FlatRideAnimationPhase kFreestyleLongProgramPhases[] = {
-    { kFreestyleLongProgramFrames.data(), 0, false, true, false },
-};
-
-const FlatRideAnimationProgram kFreestylePrograms[] = {
-    { kFreestyleLongProgramPhases, 1 }, // operationOption 0: Long Program (3600 frames)
-};
-
-// Troika: Start (frames 0-1300, 1301 frames) → Loop (frames 1301-1556, 256 frames) ×N → End (frames 1557-2460, 904 frames)
-static constexpr auto kTroikaAnimationStart = MakeSequentialFrameMap<0, 1301>();
-static constexpr auto kTroikaAnimationLoop  = MakeSequentialFrameMap<1301, 256>();
-static constexpr auto kTroikaAnimationEnd   = MakeSequentialFrameMap<1557, 904>();
-
-static constexpr FlatRideAnimationPhase kTroikaPhases[] = {
-    { kTroikaAnimationStart.data(), 1, false, false }, // 0: Start -> Loop
-    { kTroikaAnimationLoop.data(),  2, true,  false }, // 1: Loop, repeats until ride.rotations -> End
-    { kTroikaAnimationEnd.data(),   0, false, true  }, // 2: End -> arriving
-};
-
-const FlatRideAnimationProgram kTroikaPrograms[] = {
-    { kTroikaPhases, 3 },
-};
-
 /** rct2: 0x009A12EC */
 static constexpr TopSpinTimeToSpriteMap kTopSpinAnimationBeginners[] = {
     {  0,  0 }, {  0,  0 }, {  0,  0 }, {  0,  0 }, {  0,  0 }, {  0,  0 }, {  0,  0 },
