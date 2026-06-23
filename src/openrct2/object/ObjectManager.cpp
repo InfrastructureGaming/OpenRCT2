@@ -77,7 +77,10 @@ namespace OpenRCT2
 
         ~ObjectManager() override
         {
-            UnloadAll();
+            // Not UnloadAll(): the whole manager is being destroyed, so there's no point in
+            // ResetTypeToRideEntryIndexMap()'s reload-missing-custom-parkobjs pre-pass resurrecting
+            // anything we just unloaded - see UnloadAllForShutdown's comment in the header.
+            UnloadAll(false, false);
         }
 
         Object* GetLoadedObject(ObjectType objectType, size_t index) override
@@ -259,6 +262,11 @@ namespace OpenRCT2
             UnloadAll(false);
         }
 
+        void UnloadAllForShutdown() override
+        {
+            UnloadAll(false, false);
+        }
+
         void ResetObjects() override
         {
             for (auto& list : _loadedObjects)
@@ -336,7 +344,12 @@ namespace OpenRCT2
             return _loadedObjects[typeIndex];
         }
 
-        void UnloadAll(bool onlyTransient)
+        // resetTypeMap controls whether the ride-type-to-object map is rebuilt afterward.
+        // ResetTypeToRideEntryIndexMap() has a side effect of reloading any custom ride parkobj
+        // it finds missing (see its own comment) - exactly what we just unloaded above, so pass
+        // false when nothing will read the map again before this manager (or the process) goes
+        // away, e.g. final shutdown. Defaults to true to preserve every existing caller's behaviour.
+        void UnloadAll(bool onlyTransient, bool resetTypeMap = true)
         {
             for (auto type : getAllObjectTypes())
             {
@@ -350,8 +363,11 @@ namespace OpenRCT2
                     list.clear();
                 }
             }
-            UpdateSceneryGroupIndexes();
-            ResetTypeToRideEntryIndexMap();
+            if (resetTypeMap)
+            {
+                UpdateSceneryGroupIndexes();
+                ResetTypeToRideEntryIndexMap();
+            }
         }
 
         Object* LoadObject(ObjectEntryIndex slot, std::string_view identifier)

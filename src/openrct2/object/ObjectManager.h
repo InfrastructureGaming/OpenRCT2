@@ -55,6 +55,15 @@ namespace OpenRCT2
         virtual void UnloadObjects(const std::vector<ObjectEntryDescriptor>& entries) = 0;
         virtual void UnloadAllTransient() = 0;
         virtual void UnloadAll() = 0;
+        // Final-teardown variant of UnloadAll(): unloads every object without rebuilding the
+        // ride-type-to-object map afterward. UnloadAll() always rebuilds that map via
+        // ResetTypeToRideEntryIndexMap(), which has a side effect of reloading any custom ride
+        // parkobj it finds missing (intended for switching parks mid-session, where custom rides
+        // must stay resident) - called from the final shutdown path, that reload immediately
+        // re-allocates the images UnloadAll() just freed, with nothing left to free them again
+        // before the engine's exit-time "were all images freed?" assertion runs. Call this instead
+        // of UnloadAll() anywhere nothing will read the ride-type map again afterward.
+        virtual void UnloadAllForShutdown() = 0;
 
         virtual void ResetObjects() = 0;
 

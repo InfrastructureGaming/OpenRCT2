@@ -213,9 +213,16 @@ namespace OpenRCT2
 
             // Unload objects after closing all windows, this is to overcome windows like
             // the object selection window which loads objects when closed.
+            //
+            // UnloadAllForShutdown(), not UnloadAll(): UnloadAll() rebuilds the ride-type-to-object
+            // map afterward, which reloads any custom ride parkobj it finds missing (intended for
+            // switching parks mid-session). At final shutdown that immediately re-allocates the
+            // images just freed below, with nothing left to free them again before
+            // GfxObjectCheckAllImagesFreed() runs - see ObjectManager.h's comment on
+            // UnloadAllForShutdown.
             if (_objectManager != nullptr)
             {
-                _objectManager->UnloadAll();
+                _objectManager->UnloadAllForShutdown();
             }
 
             GfxObjectCheckAllImagesFreed();
