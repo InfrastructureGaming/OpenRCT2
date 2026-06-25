@@ -39688,6 +39688,31 @@ static constexpr const VehicleInfoList *TrackVehicleInfoListDefault[] = {
     &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // FlatTrack6x6
     &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // FlatTrack7x7
     &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // FlatTrack8x8
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint1x2
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint1x3
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint1x6
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint1x7
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint1x8
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint2x3
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint2x5
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint2x6
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint2x7
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint2x8
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint3x4
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint3x5
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint3x6
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint3x7
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint3x8
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint4x5
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint4x6
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint4x7
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint4x8
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint5x6
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint5x7
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint5x8
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint6x7
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint6x8
+    &TrackVehicleInfo_8BE57A, &TrackVehicleInfo_8BE69C, &TrackVehicleInfo_8BE7BE, &TrackVehicleInfo_8BE8E0,  // CustomFootprint7x8
 };
 static_assert(std::size(TrackVehicleInfoListDefault) == VehicleTrackSubpositionSizeDefault);
 

@@ -386,7 +386,39 @@ namespace OpenRCT2
         flatTrack7x7 = 352,
         flatTrack8x8 = 353,
 
-        count = 354,
+        // Custom-ride footprint shapes (see TED.FlatRide.h's BuildGenericFootprintDescriptor)
+        // not already covered by an existing flatTrackWxH/flatTrack1x4*/flatTrack1x1* piece
+        // above - every unique (width, length) pair with width <= length, 1x1 through 8x8,
+        // excluding the 11 combinations that already exist (1x1, 1x4, 1x5, 2x2, 2x4, 3x3,
+        // 4x4, 5x5, 6x6, 7x7, 8x8). Rotation already produces the WxH<->HxW mirror for any
+        // piece, so only one canonical orientation per pair is reserved here.
+        customFootprint1x2 = 354,
+        customFootprint1x3 = 355,
+        customFootprint1x6 = 356,
+        customFootprint1x7 = 357,
+        customFootprint1x8 = 358,
+        customFootprint2x3 = 359,
+        customFootprint2x5 = 360,
+        customFootprint2x6 = 361,
+        customFootprint2x7 = 362,
+        customFootprint2x8 = 363,
+        customFootprint3x4 = 364,
+        customFootprint3x5 = 365,
+        customFootprint3x6 = 366,
+        customFootprint3x7 = 367,
+        customFootprint3x8 = 368,
+        customFootprint4x5 = 369,
+        customFootprint4x6 = 370,
+        customFootprint4x7 = 371,
+        customFootprint4x8 = 372,
+        customFootprint5x6 = 373,
+        customFootprint5x7 = 374,
+        customFootprint5x8 = 375,
+        customFootprint6x7 = 376,
+        customFootprint6x8 = 377,
+        customFootprint7x8 = 378,
+
+        count = 379,
 
         none = 65535,
     };

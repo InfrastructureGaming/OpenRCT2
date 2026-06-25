@@ -12,6 +12,8 @@
 #include "../../localisation/StringIds.h"
 #include "TrackElementDescriptor.h"
 
+#include <algorithm>
+
 namespace OpenRCT2::TrackMetadata
 {
     using PS = PaintSegment;
@@ -270,8 +272,8 @@ namespace OpenRCT2::TrackMetadata
     // 0-5, clearance = ((row-2)*32, (col-2)*32). seq14 (row2,col2) is the cursor/trackOrigin
     // tile. Unlike 5×5, this grid is even and has no true geometric center — seq14 is the
     // tile nearest center, one tile-width off from the actual center point. The paint
-    // function (PaintFlatRideGeneric6x6) computes per-tile rotation/edges
-    // analytically from clearance rather than via a fixed lookup table.
+    // function (PaintFlatRideGenericAnySize, GenericFlatRide.cpp) computes per-tile
+    // rotation/edges analytically from clearance rather than via a fixed lookup table.
     static constexpr SequenceDescriptor kFlatTrack6x6Seq0 = {
         .clearance = { -64, -64, 0, 0, { 0b1111, 0 }, {} },
         .flags = { SequenceFlag::entranceConnectionNE, SequenceFlag::entranceConnectionNW, SequenceFlag::hasHeightMarker },
@@ -694,7 +696,7 @@ namespace OpenRCT2::TrackMetadata
         .definition = { TrackGroup::flatRideBase, TrackPitch::none, TrackPitch::none, TrackRoll::none, TrackRoll::none, 0 },
         // IMPORTANT: sequences[0] MUST be the cursor tile (clearance 0,0) with trackOrigin flag —
         // see the ghost-removal explanation on kTEDFlatTrack5x5. Unlike 5x5, the remaining
-        // sequence ordering carries no lookup-table dependency (PaintFlatRideGeneric6x6
+        // sequence ordering carries no lookup-table dependency (PaintFlatRideGenericAnySize
         // computes everything analytically from each sequence's own clearance), so idx 1-35
         // simply follow row-major order with idx 14 (the cursor tile) removed.
         .sequenceData = { 36,
@@ -716,7 +718,7 @@ namespace OpenRCT2::TrackMetadata
     // 7×7 flat ride base — 49 tiles. Odd dimension with true geometric center at seq24 (row3,col3).
     // Clearance: rows 0-6, x = (row-3)*32 → [-96,+96]; cols 0-6, y = (col-3)*32 → [-96,+96].
     // The cursor tile (0,0) IS the geometric center — no half-tile shift needed in the paint function.
-    // Paint function (PaintFlatRideGeneric7x7) computes rotation/edges analytically.
+    // Paint function (PaintFlatRideGenericAnySize) computes rotation/edges analytically.
     static constexpr SequenceDescriptor kFlatTrack7x7Seq0 = {
         .clearance = { -96, -96, 0, 0, { 0b1111, 0 }, {} },
         .flags = { SequenceFlag::entranceConnectionNE, SequenceFlag::entranceConnectionNW, SequenceFlag::hasHeightMarker },
@@ -955,8 +957,9 @@ namespace OpenRCT2::TrackMetadata
     // 8×8 flat ride base — 64 tiles. Even dimension; cursor at row3,col3 (0,0), one tile
     // NE/NW of the geometric center — same asymmetry as 6×6. Clearance: rows 0-7,
     // x = (row-3)*32 → [-96,+128]; cols 0-7, y = (col-3)*32 → [-96,+128].
-    // The paint function (PaintFlatRideGeneric8x8) applies a +16 shift (like 6×6)
-    // to center the model on the 8×8 plot.
+    // The paint function (PaintFlatRideGenericAnySize) derives the equivalent of a +16
+    // shift automatically from this table's own clearance range, to center the model
+    // on the 8×8 plot.
     static constexpr SequenceDescriptor kFlatTrack8x8Seq0 = {
         .clearance = { -96, -96, 0, 0, { 0b1111, 0 }, {} },
         .flags = { SequenceFlag::entranceConnectionNE, SequenceFlag::entranceConnectionNW, SequenceFlag::hasHeightMarker },
@@ -1338,5 +1341,146 @@ namespace OpenRCT2::TrackMetadata
                           { kFlatTrack3x3Seq0, kFlatTrack3x3Seq1, kFlatTrack3x3Seq2, kFlatTrack3x3Seq3, kFlatTrack3x3Seq4,
                             kFlatTrack3x3Seq5, kFlatTrack3x3Seq6, kFlatTrack3x3Seq7, kFlatTrack3x3Seq8 } },
     };
+
+    // Custom-ride footprint shapes (TrackElemType.h's customFootprintWxH block) - generated
+    // at runtime rather than hand-authored per shape, unlike every table above. A plain
+    // (non-constexpr) function avoids the MSVC constexpr-evaluation-step limit that already
+    // forces kTEDFlatTrack5x5/6x6/7x7/8x8 above to be `static const` instead of `constexpr`
+    // even with hand-written literals (see their own comments) - a compile-time template
+    // generator would only make that worse, not better, especially for the largest shapes
+    // here (7x8 = 56 tiles). This runs once, at static-init time, like any other function call.
+    //
+    // Convention (verified against kFlatTrack4x4/kFlatTrack1x4A's own data, tile-by-tile):
+    // cursor/origin tile is the (row=0, col=0) corner - NOT the geometric centre some of the
+    // larger square pieces above use (kFlatTrack6x6/8x8's own comments document why they
+    // instead centre on the cursor: it predates this generator and was a free per-shape
+    // choice, not an engine requirement) - clearance is therefore always >= 0 on both axes,
+    // matching kFlatTrack4x4/2x2/1x4A exactly. row increases along clearance.x, col along
+    // clearance.y. NE/SE/NW/SW entrance-connection flags follow the same geometric edge rule
+    // as the paint side's own edge detection (see GetGenericFootprintPaintFunction below):
+    // col==0 -> NE, col==length-1 -> SE, row==0 -> NW, row==width-1 -> SW (both flags apply
+    // simultaneously to every tile on a 1-wide/1-long axis, the only sensible reading when an
+    // axis has no interior). True corners (both axes at an extreme) also get hasHeightMarker.
+    // ClearanceFlag::flag1 on the very last sequence re-centres the ride-construction
+    // toolbar's piece-selection thumbnail on the origin (RideConstruction.cpp's DrawTrackPiece)
+    // - cosmetic only, mirrors every existing multi-tile piece's last entry.
+    static TrackElementDescriptor BuildGenericFootprintDescriptor(TrackElemType type, uint8_t width, uint8_t length)
+    {
+        TrackElementDescriptor ted{};
+        ted.coordinates = { 0, 2, 0, 0, 0, 32 };
+        ted.pieceLength = 0;
+        ted.curveChain = { TrackElemType::none, TrackElemType::none };
+        // kTEDFlatTrack5x5/6x6/7x7/8x8 (25/36/49/64 tiles) all share the SAME priceModifier,
+        // 1638400 (= 65536*25) - a deliberate ceiling on placement cost for the largest
+        // footprints, not a literal per-tile scale past that point (their own values don't
+        // continue scaling with tile count). Mirror that ceiling here so a large generated
+        // shape's build/placement cost doesn't run away unbounded past what the existing
+        // largest hand-authored pieces already settled on.
+        ted.priceModifier = std::min<uint32_t>(65536u * width * length, 1638400u);
+        ted.mirrorElement = type;
+        ted.flags = {};
+        ted.definition = { TrackGroup::flatRideBase, TrackPitch::none, TrackPitch::none,
+                            TrackRoll::none,          TrackRoll::none, 0 };
+
+        SequenceTable table{};
+        const uint8_t numSequences = width * length;
+        uint8_t index = 0;
+        for (uint8_t row = 0; row < width; row++)
+        {
+            for (uint8_t col = 0; col < length; col++)
+            {
+                SequenceDescriptor seq{};
+                seq.clearance.x = row * 32;
+                seq.clearance.y = col * 32;
+                seq.clearance.quarterTile = { 0b1111, 0 };
+
+                const bool atRowMin = row == 0;
+                const bool atRowMax = row == width - 1;
+                const bool atColMin = col == 0;
+                const bool atColMax = col == length - 1;
+
+                if (atColMin)
+                    seq.flags.set(SequenceFlag::entranceConnectionNE);
+                if (atColMax)
+                    seq.flags.set(SequenceFlag::entranceConnectionSE);
+                if (atRowMin)
+                    seq.flags.set(SequenceFlag::entranceConnectionNW);
+                if (atRowMax)
+                    seq.flags.set(SequenceFlag::entranceConnectionSW);
+
+                const bool isCorner = (atRowMin || atRowMax) && (atColMin || atColMax);
+                if (isCorner)
+                    seq.flags.set(SequenceFlag::hasHeightMarker);
+
+                if (row == 0 && col == 0)
+                {
+                    seq.flags.set(SequenceFlag::trackOrigin);
+                    seq.flags.set(SequenceFlag::hasHeightMarker);
+                }
+
+                if (index == numSequences - 1)
+                    seq.clearance.flags.set(ClearanceFlag::flag1);
+
+                seq.woodenSupports = { WoodenSupportSubType::neSw };
+
+                table.sequences[index] = seq;
+                index++;
+            }
+        }
+        table.numSequences = numSequences;
+        ted.sequenceData = table;
+        return ted;
+    }
+
+    static const TrackElementDescriptor kTEDCustomFootprint1x2 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint1x2, 1, 2);
+    static const TrackElementDescriptor kTEDCustomFootprint1x3 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint1x3, 1, 3);
+    static const TrackElementDescriptor kTEDCustomFootprint1x6 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint1x6, 1, 6);
+    static const TrackElementDescriptor kTEDCustomFootprint1x7 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint1x7, 1, 7);
+    static const TrackElementDescriptor kTEDCustomFootprint1x8 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint1x8, 1, 8);
+    static const TrackElementDescriptor kTEDCustomFootprint2x3 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint2x3, 2, 3);
+    static const TrackElementDescriptor kTEDCustomFootprint2x5 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint2x5, 2, 5);
+    static const TrackElementDescriptor kTEDCustomFootprint2x6 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint2x6, 2, 6);
+    static const TrackElementDescriptor kTEDCustomFootprint2x7 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint2x7, 2, 7);
+    static const TrackElementDescriptor kTEDCustomFootprint2x8 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint2x8, 2, 8);
+    static const TrackElementDescriptor kTEDCustomFootprint3x4 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint3x4, 3, 4);
+    static const TrackElementDescriptor kTEDCustomFootprint3x5 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint3x5, 3, 5);
+    static const TrackElementDescriptor kTEDCustomFootprint3x6 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint3x6, 3, 6);
+    static const TrackElementDescriptor kTEDCustomFootprint3x7 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint3x7, 3, 7);
+    static const TrackElementDescriptor kTEDCustomFootprint3x8 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint3x8, 3, 8);
+    static const TrackElementDescriptor kTEDCustomFootprint4x5 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint4x5, 4, 5);
+    static const TrackElementDescriptor kTEDCustomFootprint4x6 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint4x6, 4, 6);
+    static const TrackElementDescriptor kTEDCustomFootprint4x7 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint4x7, 4, 7);
+    static const TrackElementDescriptor kTEDCustomFootprint4x8 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint4x8, 4, 8);
+    static const TrackElementDescriptor kTEDCustomFootprint5x6 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint5x6, 5, 6);
+    static const TrackElementDescriptor kTEDCustomFootprint5x7 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint5x7, 5, 7);
+    static const TrackElementDescriptor kTEDCustomFootprint5x8 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint5x8, 5, 8);
+    static const TrackElementDescriptor kTEDCustomFootprint6x7 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint6x7, 6, 7);
+    static const TrackElementDescriptor kTEDCustomFootprint6x8 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint6x8, 6, 8);
+    static const TrackElementDescriptor kTEDCustomFootprint7x8 = BuildGenericFootprintDescriptor(
+        TrackElemType::customFootprint7x8, 7, 8);
 
 } // namespace OpenRCT2::TrackMetadata
