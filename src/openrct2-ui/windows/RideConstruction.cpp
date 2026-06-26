@@ -2674,6 +2674,20 @@ namespace OpenRCT2::Ui::Windows
                     if (result->error != GameActions::Status::ok)
                         return;
 
+                    // The real entrance/exit has now been finalized at this tile. Clear the
+                    // construction/provisional ghost selection before anything below runs, so the
+                    // per-tick provisional element cycle stops chasing a ghost that no longer
+                    // exists. Without this, the flip of gRideEntranceExitPlaceType below leaves the
+                    // (still-set) entranceOrExit flag + gRideEntranceExitGhostPosition pointing at
+                    // the tile we just placed on, while gRideEntranceExitPlaceType now names the
+                    // OTHER type. The next ProvisionalElementsRemove -> RideEntranceExitRemoveGhost
+                    // then searches for an element of the opposite type at that tile, finds only the
+                    // real element we just placed, and logs "Entrance/exit element not found".
+                    // RideConstructionRemoveGhosts() unsets the flag (the lingering ghost was already
+                    // consumed by the place action's nested remove, so this is a no-op removal); the
+                    // next hover re-arms a consistent ghost for the newly selected type.
+                    RideConstructionRemoveGhosts();
+
                     Audio::Play3D(Audio::SoundId::placeItem, result->position);
 
                     auto* windowMgr = GetWindowManager();
