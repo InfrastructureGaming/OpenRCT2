@@ -64,11 +64,26 @@ namespace OpenRCT2
         // before the engine's exit-time "were all images freed?" assertion runs. Call this instead
         // of UnloadAll() anywhere nothing will read the ride-type map again afterward.
         virtual void UnloadAllForShutdown() = 0;
+        // Variant of UnloadAll() for callers that are about to tear down and rebuild the object
+        // repository itself (e.g. Editor object-list reload: UnloadAll() then
+        // ObjectRepository::LoadOrConstruct()). UnloadAll()'s map rebuild resurrects custom ride
+        // parkobjs into the loaded-object lists as raw pointers owned by the *current* repository;
+        // when LoadOrConstruct() then clears the repository it frees those objects, leaving the
+        // resurrected pointers dangling for the next park load's UnloadObjectsExcept() to
+        // dereference (read access violation). This variant skips the resurrection so the
+        // loaded-object lists are left genuinely empty; the caller's subsequent object loads
+        // rebuild the map (and re-resurrect custom rides) against the fresh repository.
+        virtual void UnloadAllForRepopulation() = 0;
 
         virtual void ResetObjects() = 0;
 
         virtual std::vector<const ObjectRepositoryItem*> GetPackableObjects() = 0;
         virtual const std::vector<ObjectEntryIndex>& GetAllRideEntries(ride_type_t rideType) = 0;
+
+        // [DIAG] Temporary - lets Context dump loaded-object state immediately after park import,
+        // bracketing the import step in the first-editor-load scenery-resolution hunt. Remove once
+        // root-caused (paired with ObjectManager::DumpLoadedObjectState / DiagDumpLoadedObjectState).
+        virtual void DiagDumpLoadedObjectState(const char* tag) = 0;
     };
 
     [[nodiscard]] std::unique_ptr<IObjectManager> CreateObjectManager(IObjectRepository& objectRepository);

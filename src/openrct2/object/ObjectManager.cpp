@@ -13,6 +13,7 @@
 #include "../Diagnostic.h"
 #include "../ParkImporter.h"
 #include "../audio/Audio.h"
+#include "../drawing/Drawing.Sprite.h" // [DIAG] GfxGetG1Element for G1 content integrity check
 #include "../core/Console.hpp"
 #include "../core/EnumUtils.hpp"
 #include "../core/JobPool.h"
@@ -37,10 +38,13 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <map>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <unordered_set>
+#include <vector>
 
 namespace OpenRCT2
 {
@@ -63,6 +67,18 @@ namespace OpenRCT2
 
         std::array<std::vector<Object*>, EnumValue(ObjectType::count)> _loadedObjects;
         std::vector<std::vector<ObjectEntryIndex>> _rideTypeToObjectMap;
+
+        // Re-entrancy guard for ResetTypeToRideEntryIndexMap() - see its own comment for why
+        // this is needed: every single object load (any type, not just rides) ends with a call
+        // back into ResetTypeToRideEntryIndexMap(), which can itself load more objects in its
+        // own pre-pass, recursing back in. With 2+ custom rides registered this recurses 2+
+        // levels deep, and the inner call's "build object lists" pass ends up reading
+        // _loadedObjects/_rideTypeToObjectMap while an outer, still-on-the-stack invocation
+        // is also mid-flight against the same member state - confirmed via a real crash
+        // (read access violation, 3-deep recursive call stack through
+        // RepositoryItemToObject -> ResetTypeToRideEntryIndexMap) when entering the Scenario
+        // Editor with multiple custom rides registered.
+        bool _isResettingTypeMap = false;
 
         // Used to return a safe empty vector back from GetAllRideEntries, can be removed when std::span is available
         std::vector<ObjectEntryIndex> _nullRideTypeEntries;
@@ -222,10 +238,221 @@ namespace OpenRCT2
             // Update indices.
             UpdateSceneryGroupIndexes();
             ResetTypeToRideEntryIndexMap();
+
+            // [DIAG] Temporary: dump loaded-object image state to diff the first (bad) editor
+            // landscape load against a subsequent (clean) load. Remove once root-caused.
+            DumpLoadedObjectState("LoadObjects(ObjectList)");
+        }
+
+        // [DIAG] Temporary diagnostic. Renderer-independent corruption => the G1 image data itself is
+        // wrong on the bad load. The most likely mechanism is image-allocator free-list corruption
+        // producing OVERLAPPING [base, base+num) ranges across objects (one object's pixel pointers
+        // clobber another's) or DUPLICATE identifiers (an object loaded twice). This scans EVERY
+        // loaded object of EVERY type live from _loadedObjects and reports both, per load, so the
+        // first (bad) editor landscape load can be compared against the next (clean) one.
+        void DumpLoadedObjectState(const char* tag)
+        {
+            static int sLoadSeq = 0;
+            const int seq = ++sLoadSeq;
+
+            struct Range
+            {
+                uint32_t base;
+                uint32_t end; // base + num (exclusive)
+                int type;
+                size_t slot;
+                std::string id;
+            };
+            std::vector<Range> ranges;
+            std::map<std::string, int> idCounts;
+            size_t totalLoaded = 0;
+
+            // [DIAG] G1 content fingerprint per object. Object slots/counts are already proven
+            // identical bad-vs-clean; the only remaining suspect is the actual G1 pixel-metadata
+            // at each object's [base) range being zeroed (object's images freed out from under it)
+            // or clobbered (another object's bad free overwrote them). w/h/x/y are intrinsic to the
+            // image, so they're base-independent and can be compared object-by-object across loads.
+            struct G1Sig
+            {
+                int type = 0;
+                size_t slot = 0;
+                int16_t w = 0, h = 0, x = 0, y = 0; // g1[base] metadata for display
+                int nullCount = 0;                  // sampled g1 elements with null pixel offset
+                int sampled = 0;
+                uint32_t fp = 0; // fingerprint over sampled metadata
+            };
+            std::map<std::string, G1Sig> sigs;
+
+            for (size_t typeIdx = 0; typeIdx < _loadedObjects.size(); typeIdx++)
+            {
+                const auto& list = _loadedObjects[typeIdx];
+                for (size_t slot = 0; slot < list.size(); slot++)
+                {
+                    auto* obj = list[slot];
+                    if (obj == nullptr)
+                        continue;
+                    totalLoaded++;
+                    idCounts[std::string(obj->GetIdentifier())]++;
+
+                    const uint32_t base = static_cast<uint32_t>(obj->GetBaseImageId());
+                    const uint32_t num = obj->GetNumImages();
+                    // kImageIndexUndefined (0xFFFFFFFF) / zero-image objects don't own a G1 range.
+                    if (num == 0 || base == 0 || base == 0xFFFFFFFFu)
+                        continue;
+                    ranges.push_back(Range{ base, base + num, static_cast<int>(typeIdx), slot,
+                        std::string(obj->GetIdentifier()) });
+
+                    // [DIAG] Sample this object's G1 range at first/mid/last image and fingerprint
+                    // the base-independent metadata; flag any sampled element with a null pixel
+                    // pointer (means its g1 entry was freed/zeroed while the object still claims it).
+                    G1Sig sig;
+                    sig.type = static_cast<int>(typeIdx);
+                    sig.slot = slot;
+                    const uint32_t samplePts[3] = { base, base + num / 2, base + num - 1 };
+                    uint32_t prevPt = 0xFFFFFFFFu;
+                    for (uint32_t pt : samplePts)
+                    {
+                        if (pt == prevPt)
+                            continue;
+                        prevPt = pt;
+                        const auto* g1 = GfxGetG1Element(static_cast<ImageIndex>(pt));
+                        sig.sampled++;
+                        if (g1 == nullptr || g1->offset == nullptr)
+                        {
+                            sig.nullCount++;
+                            continue;
+                        }
+                        if (pt == base)
+                        {
+                            sig.w = g1->width;
+                            sig.h = g1->height;
+                            sig.x = g1->xOffset;
+                            sig.y = g1->yOffset;
+                        }
+                        sig.fp = sig.fp * 31u
+                            + (static_cast<uint32_t>(static_cast<uint16_t>(g1->width)) << 16
+                               | static_cast<uint16_t>(g1->height));
+                        sig.fp = sig.fp * 31u
+                            + (static_cast<uint32_t>(static_cast<uint16_t>(g1->xOffset)) << 16
+                               | static_cast<uint16_t>(g1->yOffset));
+                    }
+                    sigs[std::string(obj->GetIdentifier())] = sig;
+                }
+            }
+
+            // Overlap detection: sort by base, report any range whose start falls inside the
+            // previous range. (Ranges are half-open [base, end).)
+            std::sort(ranges.begin(), ranges.end(), [](const Range& a, const Range& b) { return a.base < b.base; });
+            int overlaps = 0;
+            for (size_t i = 1; i < ranges.size(); i++)
+            {
+                const auto& prev = ranges[i - 1];
+                const auto& cur = ranges[i];
+                if (cur.base < prev.end)
+                {
+                    overlaps++;
+                    if (overlaps <= 60)
+                    {
+                        LOG_ERROR(
+                            "[DIAG]   OVERLAP %u imgs: '%s'(t%d s%zu) [%u,%u) vs '%s'(t%d s%zu) [%u,%u)",
+                            prev.end - cur.base, prev.id.c_str(), prev.type, prev.slot, prev.base, prev.end,
+                            cur.id.c_str(), cur.type, cur.slot, cur.base, cur.end);
+                    }
+                }
+            }
+
+            int dupes = 0;
+            for (const auto& [id, count] : idCounts)
+            {
+                if (count > 1)
+                {
+                    dupes++;
+                    LOG_ERROR("[DIAG]   DUPLICATE id='%s' loaded %d times", id.c_str(), count);
+                }
+            }
+
+            // [DIAG] (1) Intra-load: any loaded object whose own G1 range has been zeroed (null pixel
+            // pointer) is the corruption itself - it renders nothing ("missing scenery"). (2) Cross-load:
+            // an object whose base-independent G1 metadata differs from the previous load had its pixels
+            // clobbered (another object's image now occupies its range) on one of the two loads.
+            static std::map<std::string, G1Sig> sPrevSigs;
+            int g1Zeroed = 0;
+            int g1Mismatch = 0;
+            for (const auto& [id, cur] : sigs)
+            {
+                if (cur.nullCount > 0)
+                {
+                    g1Zeroed++;
+                    if (g1Zeroed <= 60)
+                        LOG_ERROR(
+                            "[DIAG]   ZEROED-G1 id='%s'(t%d s%zu) %d/%d sampled imgs have NULL pixel offset"
+                            " (images freed while object still loaded -> renders blank)",
+                            id.c_str(), cur.type, cur.slot, cur.nullCount, cur.sampled);
+                }
+                auto it = sPrevSigs.find(id);
+                if (it != sPrevSigs.end() && it->second.fp != cur.fp)
+                {
+                    g1Mismatch++;
+                    if (g1Mismatch <= 60)
+                        LOG_ERROR(
+                            "[DIAG]   G1-MISMATCH id='%s'(t%d s%zu) prev{w%d h%d x%d y%d} -> cur{w%d h%d x%d y%d}"
+                            " (pixel data differs across loads -> clobbered on one of them)",
+                            id.c_str(), cur.type, cur.slot, it->second.w, it->second.h, it->second.x, it->second.y,
+                            cur.w, cur.h, cur.x, cur.y);
+                }
+            }
+            sPrevSigs = sigs;
+
+            // [DIAG] smallScenery-specific census. The first-editor-load bug resolves EVERY
+            // scenery tile element's object lookup to null (proven by Editor::DiagMapCensus),
+            // while this dump still counts the objects as loaded. That means the smallScenery
+            // list is either emptied/shrunk or its slot assignment shifts away from the tile
+            // elements' entry indices somewhere between end-of-LoadObjects and post-Import.
+            // Snapshot the list here and again post-Import to localise which step changes it.
+            const auto& ssList = _loadedObjects[EnumValue(ObjectType::smallScenery)];
+            size_t ssOccupied = 0;
+            size_t ssMaxSlot = 0;
+            // [DIAG] FNV-1a hash over the (slot -> identifier) assignment. If this hash differs
+            // between the bad and clean load, the SAME objects sit at DIFFERENT slots (the list
+            // stats can be identical while the per-slot assignment shifts). If it matches, the
+            // slot map is genuinely identical and the divergence is in the tile elements' entry
+            // indices instead (compare against Editor::DiagMapCensus's entry-index hash).
+            uint64_t ssSlotHash = 1469598103934665603ull;
+            for (size_t s = 0; s < ssList.size(); s++)
+            {
+                if (ssList[s] == nullptr)
+                    continue;
+                ssOccupied++;
+                ssMaxSlot = s;
+                ssSlotHash = (ssSlotHash ^ s) * 1099511628211ull;
+                for (char c : ssList[s]->GetIdentifier())
+                    ssSlotHash = (ssSlotHash ^ static_cast<uint8_t>(c)) * 1099511628211ull;
+            }
+
+            LOG_INFO(
+                "[DIAG] ===== load #%d (%s): %zu objects, %zu with G1 ranges, %d OVERLAPS, %d DUPLICATE ids, "
+                "%d ZEROED-G1, %d G1-MISMATCH | smallScenery list size=%zu occupied=%zu maxSlot=%zu slotHash=%016llx =====",
+                seq, tag, totalLoaded, ranges.size(), overlaps, dupes, g1Zeroed, g1Mismatch, ssList.size(),
+                ssOccupied, ssMaxSlot, static_cast<unsigned long long>(ssSlotHash));
+        }
+
+        // [DIAG] Temporary: expose the dump so Context can call it again AFTER park import,
+        // bracketing parkImporter->Import() to see whether the import step is what empties or
+        // re-slots the smallScenery list on the first editor load. Remove with DumpLoadedObjectState.
+        void DiagDumpLoadedObjectState(const char* tag) override
+        {
+            DumpLoadedObjectState(tag);
         }
 
         void UnloadObjects(const std::vector<ObjectEntryDescriptor>& entries) override
         {
+            // [DIAG] temporary - catches the public unload path. The first-editor-load scenery
+            // wipe nulls every transient smallScenery in place (size kept, occupied->0), which is
+            // exactly what looping UnloadObject over a transient descriptor list does. Logging the
+            // count here, bracketed by the post-import / end-of-LoadParkFromStream dumps, pins
+            // whether THIS is the call that empties the lists and how big the descriptor set is.
+            LOG_INFO("[DIAG] ObjectManager::UnloadObjects called with %zu entries", entries.size());
+
             // TODO there are two performance issues here:
             //        - FindObject for every entry which is a dictionary lookup
             //        - GetLoadedObjectIndex for every entry which enumerates _loadedList
@@ -264,6 +491,16 @@ namespace OpenRCT2
 
         void UnloadAllForShutdown() override
         {
+            UnloadAll(false, false);
+        }
+
+        void UnloadAllForRepopulation() override
+        {
+            // resetTypeMap=false: do NOT let ResetTypeToRideEntryIndexMap()'s pre-pass resurrect
+            // custom ride parkobjs here. The caller is about to clear and rebuild the object
+            // repository (ObjectRepository::LoadOrConstruct), which would free anything we
+            // resurrect now and leave dangling raw pointers in _loadedObjects. See the header
+            // comment on UnloadAllForRepopulation() for the full rationale.
             UnloadAll(false, false);
         }
 
@@ -766,13 +1003,32 @@ namespace OpenRCT2
 
         void ResetTypeToRideEntryIndexMap()
         {
+            // Re-entrancy guard (see _isResettingTypeMap's own comment): every object load,
+            // including the ones the pre-pass below issues itself, ends with a call back into
+            // this very function. A nested call used to be allowed to run to completion -
+            // rebuilding _rideTypeToObjectMap and re-scanning _loadedObjects - while an outer
+            // invocation was still mid-flight against that same state, corrupting it. The
+            // outer-most call already covers every registered custom ride type in its own
+            // single forward pre-pass loop below, so letting a nested call additionally load
+            // objects and rebuild the map was never actually necessary for correctness - it
+            // was just an unintended side effect of LoadObject always refreshing the map.
+            // A scope guard (not a plain bool set/clear) keeps this safe even if LoadObject
+            // throws partway through (e.g. a malformed manifest.json) - the flag must clear on
+            // every exit path, not just the normal one, or every later call would short-circuit
+            // forever.
+            if (_isResettingTypeMap)
+                return;
+            struct ScopedReentryGuard
+            {
+                bool& flag;
+                explicit ScopedReentryGuard(bool& f) : flag(f) { flag = true; }
+                ~ScopedReentryGuard() { flag = false; }
+            } reentryGuard(_isResettingTypeMap);
+
             // Pre-pass: ensure all custom ride parkobjs are loaded.
             // When a park file is opened the object manager evicts objects not saved with that park;
             // custom ride vehicles won't be in any existing park's object list. LoadObject is a no-op
-            // if the object is already present. If it's missing it loads it and recursively calls
-            // ResetTypeToRideEntryIndexMap — that nested call will find subsequent objects also missing
-            // and keep loading until all custom parkobjs are resident. Recursion depth is bounded by
-            // the number of registered custom rides (typically very small).
+            // if the object is already present.
             auto& registry = GetRideTypeRegistry();
             for (uint32_t ci = RIDE_TYPE_COUNT; ci < registry.Count(); ci++)
             {
