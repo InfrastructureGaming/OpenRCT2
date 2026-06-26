@@ -321,10 +321,6 @@ namespace OpenRCT2::Ui::Windows
          */
         void onClose() override
         {
-            // [DIAG] temporary - if this logs between the post-import and end-of-LoadParkFromStream
-            // dumps, the editor object-selection window outlived LoadLandscape's CloseAll (its
-            // canClose() vetoed the close) and is now wiping the just-loaded park here.
-            LOG_INFO("[DIAG] EditorObjectSelection::onClose firing");
             UnloadUnselectedObjects();
             EditorLoadSelectedObjects();
             EditorObjectFlagsClear();

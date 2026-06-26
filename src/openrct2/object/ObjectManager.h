@@ -79,11 +79,6 @@ namespace OpenRCT2
 
         virtual std::vector<const ObjectRepositoryItem*> GetPackableObjects() = 0;
         virtual const std::vector<ObjectEntryIndex>& GetAllRideEntries(ride_type_t rideType) = 0;
-
-        // [DIAG] Temporary - lets Context dump loaded-object state immediately after park import,
-        // bracketing the import step in the first-editor-load scenery-resolution hunt. Remove once
-        // root-caused (paired with ObjectManager::DumpLoadedObjectState / DiagDumpLoadedObjectState).
-        virtual void DiagDumpLoadedObjectState(const char* tag) = 0;
     };
 
     [[nodiscard]] std::unique_ptr<IObjectManager> CreateObjectManager(IObjectRepository& objectRepository);

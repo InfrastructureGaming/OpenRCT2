@@ -431,19 +431,6 @@ void UnloadUnselectedObjects()
             }
         }
     }
-    // [DIAG] temporary - this is the prime suspect for the first-editor-load scenery wipe. If this
-    // fires between the post-import and end-of-LoadParkFromStream dumps, the lingering object-
-    // selection window's onClose is unloading the freshly-loaded park's objects because they are
-    // not flagged Selected in _objectSelectionFlags. selected= shows how many survive (intransient
-    // skip the unload list at line ~427, so a tiny selected count => near-total wipe).
-    size_t diagSelected = 0;
-    for (auto diagFlag : _objectSelectionFlags)
-        if (diagFlag & ObjectSelectionFlags::Selected)
-            diagSelected++;
-    LOG_INFO(
-        "[DIAG] UnloadUnselectedObjects: numItems=%d toUnload=%zu flagsSize=%zu selected=%zu", numItems,
-        objectsToUnload.size(), _objectSelectionFlags.size(), diagSelected);
-
     ObjectManagerUnloadObjects(objectsToUnload);
 }
 

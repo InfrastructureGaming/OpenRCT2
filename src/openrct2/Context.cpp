@@ -848,7 +848,6 @@ namespace OpenRCT2
                 // TODO: Have a separate GameState and exchange once loaded.
                 auto& gameState = ::getGameState();
                 parkImporter->Import(gameState);
-                _objectManager->DiagDumpLoadedObjectState("post-import"); // [DIAG] temporary - brackets Import
                 SetProgress(100, 100, STR_STRING_M_PERCENT);
 
                 // Reset viewport rendering inhibition
@@ -926,10 +925,6 @@ namespace OpenRCT2
                     auto windowManager = _uiContext->GetWindowManager();
                     windowManager->ShowError(STR_PARK_USES_FALLBACK_IMAGES_WARNING, kStringIdEmpty, Formatter());
                 }
-
-                // [DIAG] temporary - brackets GameLoadInit/ScenarioBegin (which ran above). If the
-                // smallScenery list is full at "post-import" but empty here, that branch emptied it.
-                _objectManager->DiagDumpLoadedObjectState("end-of-LoadParkFromStream");
 
                 CloseProgress();
                 return true;

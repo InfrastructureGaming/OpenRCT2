@@ -10,10 +10,6 @@
 #include "Editor.h"
 
 #include "Context.h"
-#include "Diagnostic.h"                            // [DIAG] LOG_INFO for the temporary first-editor-load map census
-#include "world/tile_element/LargeSceneryElement.h" // [DIAG] GetEntryIndex() on concrete element type
-#include "world/tile_element/SmallSceneryElement.h" // [DIAG] GetEntryIndex() on concrete element type
-#include "world/tile_element/WallElement.h"         // [DIAG] GetEntryIndex() on concrete element type
 #include "EditorObjectSelectionSession.h"
 #include "FileClassifier.h"
 #include "Game.h"
@@ -55,7 +51,6 @@
 #include "world/Scenery.h"
 #include "world/Weather.h"
 
-#include <algorithm> // [DIAG] std::min/std::max for the smallScenery entry-index range in DiagMapCensus
 #include <array>
 #include <cassert>
 #include <vector>
@@ -263,126 +258,9 @@ namespace OpenRCT2::Editor
         GameActions::Execute(&landBuyRightsAction, gameState);
     }
 
-    // [DIAG] TEMPORARY - first-editor-load scenery-corruption hunt. Object + G1 image state at
-    // the end of LoadObjects is proven byte-identical between the bad first load and the clean
-    // subsequent loads, so the divergence must live in the imported map itself or in a
-    // post-import step. This walks every tile element and reports counts by type; for each
-    // scenery/wall element it also resolves the referenced loaded object and counts how many
-    // point at a null (unloaded) slot. Compare the "post-import" line of load #1 (bad) against
-    // load #2 (clean): if scenery counts differ, the import dropped elements; if counts match but
-    // null-refs differ, object resolution is wrong; if both match, the map is intact and the
-    // fault is purely render-side. The "post-cleanup" line brackets ClearMapForEditing
-    // (MapRemoveAllRides / RideInitAll) to catch the editor wrapper damaging the array.
-    // Remove this function and its two call sites once root-caused.
-    static void DiagMapCensus(const char* tag)
-    {
-        static int sSeq = 0;
-        const int seq = ++sSeq;
-
-        auto& objManager = GetContext()->GetObjectManager();
-
-        // [DIAG] Dump the loaded-object state through THIS census's own object-manager handle, at
-        // census time. The post-import dump (same _loadedObjects, moments earlier) shows smallScenery
-        // size=1141 fully occupied, so list[878] is non-null and the bounds check is constant - yet
-        // GetLoadedObject(878) returns null here. Either the list emptied in between (this dump shows
-        // occupied~0) or this handle reads a DIFFERENT manager than the loader used (this dump shows
-        // a different size/slotHash, or 1141 while the lookups below still return null).
-        objManager.DiagDumpLoadedObjectState("census-time via census handle");
-
-        size_t total = 0;
-        size_t surface = 0, path = 0, track = 0, entrance = 0, banner = 0, other = 0;
-        size_t smScen = 0, smScenNull = 0;
-        size_t lgScen = 0, lgScenNull = 0;
-        size_t wall = 0, wallNull = 0;
-
-        // [DIAG] Track the actual smallScenery entry indices the tile elements reference. The object
-        // LIST is proven identical (same size/occupied/slotHash) between the bad and clean load, yet
-        // every lookup is null on the bad load. So either the tile elements carry DIFFERENT entry
-        // indices on the bad load (idxHash/min/max will differ from the clean load), or the slot
-        // assignment behind those indices differs (slotHash in the ObjectManager dump will differ).
-        // One sample of the first element pins the exact value and the slot it (fails to) hit.
-        uint64_t ssIdxHash = 1469598103934665603ull;
-        uint32_t ssMinIdx = 0xFFFFFFFFu, ssMaxIdx = 0;
-        bool ssSampled = false;
-        uint32_t ssSampleIdx = 0;
-        bool ssSampleResolved = false;
-
-        TileElementIterator it;
-        TileElementIteratorBegin(&it);
-        while (TileElementIteratorNext(&it))
-        {
-            total++;
-            switch (it.element->getType())
-            {
-                case TileElementType::Surface:
-                    surface++;
-                    break;
-                case TileElementType::Path:
-                    path++;
-                    break;
-                case TileElementType::Track:
-                    track++;
-                    break;
-                case TileElementType::Entrance:
-                    entrance++;
-                    break;
-                case TileElementType::Banner:
-                    banner++;
-                    break;
-                case TileElementType::SmallScenery:
-                {
-                    smScen++;
-                    auto idx = it.element->asSmallScenery()->GetEntryIndex();
-                    bool resolved = objManager.GetLoadedObject(ObjectType::smallScenery, idx) != nullptr;
-                    if (!resolved)
-                        smScenNull++;
-                    ssIdxHash = (ssIdxHash ^ idx) * 1099511628211ull;
-                    ssMinIdx = std::min(ssMinIdx, static_cast<uint32_t>(idx));
-                    ssMaxIdx = std::max(ssMaxIdx, static_cast<uint32_t>(idx));
-                    if (!ssSampled)
-                    {
-                        ssSampled = true;
-                        ssSampleIdx = idx;
-                        ssSampleResolved = resolved;
-                    }
-                    break;
-                }
-                case TileElementType::LargeScenery:
-                {
-                    lgScen++;
-                    auto idx = it.element->asLargeScenery()->GetEntryIndex();
-                    if (objManager.GetLoadedObject(ObjectType::largeScenery, idx) == nullptr)
-                        lgScenNull++;
-                    break;
-                }
-                case TileElementType::Wall:
-                {
-                    wall++;
-                    auto idx = it.element->asWall()->GetEntryIndex();
-                    if (objManager.GetLoadedObject(ObjectType::walls, idx) == nullptr)
-                        wallNull++;
-                    break;
-                }
-                default:
-                    other++;
-                    break;
-            }
-        }
-
-        LOG_INFO(
-            "[DIAG-MAP] #%d (%s): total=%zu surface=%zu path=%zu track=%zu entrance=%zu banner=%zu other=%zu | "
-            "smallScenery=%zu (null=%zu) largeScenery=%zu (null=%zu) wall=%zu (null=%zu) | ssIdx min=%u max=%u "
-            "idxHash=%016llx sample idx=%u resolved=%d",
-            seq, tag, total, surface, path, track, entrance, banner, other, smScen, smScenNull, lgScen, lgScenNull,
-            wall, wallNull, ssMinIdx, ssMaxIdx, static_cast<unsigned long long>(ssIdxHash), ssSampleIdx,
-            ssSampleResolved ? 1 : 0);
-    }
-
     static void AfterLoadCleanup(bool loadedFromSave)
     {
-        DiagMapCensus("post-import (pre-cleanup)"); // [DIAG] temporary
         ClearMapForEditing(loadedFromSave);
-        DiagMapCensus("post-cleanup"); // [DIAG] temporary
 
         // TODO: replace with dedicated scene
         auto* context = GetContext();
@@ -418,15 +296,6 @@ namespace OpenRCT2::Editor
         auto* windowMgr = Ui::GetWindowManager();
         windowMgr->ForceClose(WindowClass::editorObjectSelection);
         windowMgr->CloseAll();
-
-        // [DIAG] temporary - the #4996 CloseAll above is supposed to dismiss the object-selection
-        // window before the park loads so its onClose can't unload the new park's objects. Close()
-        // honours canClose(), and that window's canClose()==EditorObjectSelectionWindowCheck()
-        // returns false whenever a required object type is unselected - so the window can SURVIVE
-        // this CloseAll and fire onClose later, mid-load. Log whether it's still alive here.
-        LOG_INFO(
-            "[DIAG] LoadLandscape post-CloseAll: editorObjectSelection window still open=%d",
-            windowMgr->FindByClass(WindowClass::editorObjectSelection) != nullptr);
 
         if (!GetContext()->LoadParkFromFile(path))
             return false;
