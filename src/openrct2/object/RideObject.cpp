@@ -1260,15 +1260,31 @@ namespace OpenRCT2
                     uint16_t endFrame    = Json::GetNumber<uint16_t>(jPhase["endFrame"]);
                     uint8_t  ticksPerFrame = Json::GetNumber<uint8_t>(jPhase["ticksPerFrame"], 1);
                     if (ticksPerFrame < 1) ticksPerFrame = 1;
+                    // Optional reverse playback: emit the [startFrame, endFrame] range
+                    // backwards so one authored sprite range can drive a motion and its
+                    // inverse without duplicating any frames (e.g. reuse a "restraints
+                    // closing" range, reversed, to open them). Absent/false is forward,
+                    // byte-for-byte identical to the previous behaviour.
+                    bool playReverse = jPhase.contains("playReverse")
+                        && Json::GetBoolean(jPhase["playReverse"]);
 
-                    // Sequential frame map with optional time-stretching:
-                    // [f, f, ...(ticksPerFrame), f+1, f+1, ..., endFrame, ..., 0xFFFF]
+                    // Sequential frame map with optional time-stretching and direction:
+                    // forward [start, ..., end, 0xFFFF] or reverse [end, ..., start, 0xFFFF],
+                    // each frame repeated ticksPerFrame times.
                     auto& frameMap = data->FrameMaps.emplace_back();
                     uint16_t count = (endFrame >= startFrame) ? (endFrame - startFrame + 1) : 0;
                     frameMap.reserve(static_cast<size_t>(count) * ticksPerFrame + 1);
-                    for (uint16_t f = startFrame; f <= endFrame; ++f)
+                    // Index-based rather than `for (f = endFrame; f >= startFrame; --f)`:
+                    // that naive reverse loop underflows uint16_t and never terminates when
+                    // startFrame == 0 (f wraps to 65535). Here i < count guarantees
+                    // endFrame - i >= startFrame >= 0, so the subtraction is always safe.
+                    for (uint16_t i = 0; i < count; ++i)
+                    {
+                        uint16_t f = playReverse ? static_cast<uint16_t>(endFrame - i)
+                                                 : static_cast<uint16_t>(startFrame + i);
                         for (uint8_t t = 0; t < ticksPerFrame; ++t)
                             frameMap.push_back(f);
+                    }
                     frameMap.push_back(0xFFFF);
 
                     FlatRideAnimationPhase phase{};
