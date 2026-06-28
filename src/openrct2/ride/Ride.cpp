@@ -1041,7 +1041,7 @@ static void RideInspectionUpdate(Ride& ride)
         return;
     }
 
-    if (ride.getRideTypeDescriptor().availableBreakdowns.isEmpty())
+    if (ride.getAvailableBreakdowns().isEmpty())
         return;
 
     if (inspectionIntervalMinutes > ride.lastInspection)
@@ -1162,7 +1162,7 @@ static Breakdown RideGetNewBreakdownProblem(const Ride& ride)
     if (!ride.canBreakDown())
         return Breakdown::none;
 
-    auto availableBreakdownProblems = ride.getRideTypeDescriptor().availableBreakdowns;
+    auto availableBreakdownProblems = ride.getAvailableBreakdowns();
 
     // Calculate the total probability range for all possible breakdown problems
     int32_t totalProbability = 0;
@@ -1212,9 +1212,21 @@ static Breakdown RideGetNewBreakdownProblem(const Ride& ride)
     return Breakdown::brakesFailure;
 }
 
+FlagHolder<uint8_t, Breakdown> Ride::getAvailableBreakdowns() const
+{
+    const auto* entry = getRideEntry();
+    // A parkobj-authored set fully replaces the ride type's default (rather than
+    // intersecting it) so a custom flat ride sharing a generic ride type can enable
+    // breakdowns its type's default set omits - and an empty authored set means
+    // "never breaks down". Absent override => the ride type's default, unchanged.
+    if (entry != nullptr && entry->breakdownOverride.has_value())
+        return *entry->breakdownOverride;
+    return getRideTypeDescriptor().availableBreakdowns;
+}
+
 bool Ride::canBreakDown() const
 {
-    if (getRideTypeDescriptor().availableBreakdowns.isEmpty())
+    if (getAvailableBreakdowns().isEmpty())
     {
         return false;
     }
@@ -1411,7 +1423,7 @@ static void RideMechanicStatusUpdate(Ride& ride, MechanicStatus mechanicStatus)
             }
             break;
         case MechanicStatus::calling:
-            if (ride.getRideTypeDescriptor().availableBreakdowns.isEmpty())
+            if (ride.getAvailableBreakdowns().isEmpty())
             {
                 ride.flags.unset(RideFlag::breakdownPending, RideFlag::brokenDown, RideFlag::dueInspection);
                 break;

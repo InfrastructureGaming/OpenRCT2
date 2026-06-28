@@ -439,6 +439,11 @@ private:
 
 public:
     bool canBreakDown() const;
+    // The set of breakdowns this ride may suffer: the entry's per-object override
+    // (RideObjectEntry::breakdownOverride) when the parkobj specifies one, otherwise the
+    // ride type's default availableBreakdowns. Centralises the choice so every breakdown
+    // site honours an authored set without each having to know about the override.
+    FlagHolder<uint8_t, Breakdown> getAvailableBreakdowns() const;
     RideClassification getClassification() const;
     bool isRide() const;
     void renew();

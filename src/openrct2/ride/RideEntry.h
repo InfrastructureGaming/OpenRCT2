@@ -17,6 +17,7 @@
 #include "VehicleColour.h"
 
 #include <cstdint>
+#include <optional>
 
 // Set to 255 on all tracked ride entries
 static uint8_t constexpr kNoFlatRideCars = 0xFF;
@@ -25,6 +26,12 @@ static uint8_t constexpr kNoFlatRideCars = 0xFF;
 // Allows RideObjectEntry to carry a pointer to the parsed animation descriptor
 // without creating a circular include dependency (RideData.h already includes RideEntry.h).
 struct FlatRideRotationDescriptor;
+
+// Forward declaration — full definition in Ride.h. Lets RideObjectEntry carry an
+// optional per-object breakdown set without including Ride.h (which forward-declares
+// RideObjectEntry, so the include can't go the other way). FlagHolder only stores the
+// underlying integer, so the fixed-underlying-type forward declaration is sufficient here.
+enum class Breakdown : uint8_t;
 
 struct RideNaming
 {
@@ -120,6 +127,13 @@ struct RideObjectEntry
     // "flatRideAnimation" JSON block. Points into RideObject-owned storage; valid for the
     // lifetime of the loaded object. nullptr for all legacy/non-generic-flat-ride entries.
     const FlatRideRotationDescriptor* flatRideAnimation = nullptr;
+
+    // Set at load time from the parkobj's "breakdowns" property (see RideObject.cpp). When
+    // present it REPLACES the ride type's availableBreakdowns for this entry's rides (see
+    // Ride::getAvailableBreakdowns) - an empty set means the ride never breaks down, exactly
+    // like the cannotBreakDown flag. nullopt for legacy/other objects, which keep their ride
+    // type's default breakdown set unchanged.
+    std::optional<FlagHolder<uint8_t, Breakdown>> breakdownOverride;
 
     const CarEntry* GetCar(size_t id) const
     {

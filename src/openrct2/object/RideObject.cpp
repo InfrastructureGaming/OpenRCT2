@@ -698,6 +698,33 @@ namespace OpenRCT2
                     { "hideEmptyTrains", RideEntryFlag::hideEmptyTrains },
                     { "noReverseOption", RideEntryFlag::noReverseOption },
                 });
+
+            // Optional per-object breakdown set. When the "breakdowns" array is present
+            // (even empty), it replaces the ride type's default availableBreakdowns for this
+            // object's rides (see Ride::getAvailableBreakdowns); an empty array means the ride
+            // never breaks down, like the "disableBreakdown" flag above. Absent => the ride
+            // type keeps its default set, so this never alters non-authoring objects.
+            if (properties.contains("breakdowns") && properties["breakdowns"].is_array())
+            {
+                static const EnumMap<Breakdown> kBreakdownNames({
+                    { "safetyCutOut", Breakdown::safetyCutOut },
+                    { "restraintsStuckClosed", Breakdown::restraintsStuckClosed },
+                    { "restraintsStuckOpen", Breakdown::restraintsStuckOpen },
+                    { "doorsStuckClosed", Breakdown::doorsStuckClosed },
+                    { "doorsStuckOpen", Breakdown::doorsStuckOpen },
+                    { "vehicleMalfunction", Breakdown::vehicleMalfunction },
+                    { "brakesFailure", Breakdown::brakesFailure },
+                    { "controlFailure", Breakdown::controlFailure },
+                });
+
+                FlagHolder<uint8_t, Breakdown> mask;
+                for (const auto& jBreakdown : properties["breakdowns"])
+                {
+                    if (auto breakdown = kBreakdownNames.TryGet(Json::GetString(jBreakdown)); breakdown.has_value())
+                        mask.set(*breakdown);
+                }
+                _legacyType.breakdownOverride = mask;
+            }
         }
 
         PopulateTablesFromJson(context, root);

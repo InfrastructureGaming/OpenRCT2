@@ -3898,7 +3898,7 @@ namespace OpenRCT2::Ui::Windows
                     for (auto i : kAllBreakdownTypes)
                     {
                         assert(j < static_cast<int32_t>(std::size(rideEntry->ride_type)));
-                        if (GetRideTypeDescriptor(rideEntry->ride_type[j]).availableBreakdowns.has(i))
+                        if (ride->getAvailableBreakdowns().has(i))
                         {
                             if (i == Breakdown::brakesFailure && ride->isBlockSectioned())
                             {
@@ -3925,7 +3925,7 @@ namespace OpenRCT2::Ui::Windows
                         {
                             for (auto i : kAllBreakdownTypes)
                             {
-                                if (GetRideTypeDescriptor(rideEntry->ride_type[j]).availableBreakdowns.has(i))
+                                if (ride->getAvailableBreakdowns().has(i))
                                 {
                                     if (i == Breakdown::brakesFailure && ride->isBlockSectioned())
                                     {
@@ -4040,7 +4040,7 @@ namespace OpenRCT2::Ui::Windows
                         {
                             breakdown = i;
                             assert(j < static_cast<int32_t>(std::size(rideEntry->ride_type)));
-                            if (GetRideTypeDescriptor(rideEntry->ride_type[j]).availableBreakdowns.has(i))
+                            if (ride->getAvailableBreakdowns().has(i))
                             {
                                 if (i == Breakdown::brakesFailure && ride->isBlockSectioned())
                                 {
@@ -4091,7 +4091,7 @@ namespace OpenRCT2::Ui::Windows
                 widgets[WIDX_FORCE_BREAKDOWN].type = WidgetType::empty;
             }
 
-            if (ride->getRideTypeDescriptor().availableBreakdowns.isEmpty() || !ride->flags.has(RideFlag::everBeenOpened))
+            if (ride->getAvailableBreakdowns().isEmpty() || !ride->flags.has(RideFlag::everBeenOpened))
             {
                 setWidgetDisabled(WIDX_REFURBISH_RIDE, true);
                 widgets[WIDX_REFURBISH_RIDE].tooltip = STR_CANT_REFURBISH_NOT_NEEDED;
