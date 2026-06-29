@@ -91,10 +91,15 @@ static void PaintGenericRotatingStructure(
     CoordsXYZ offset(xOffset, yOffset, height + desc.StructureZOffset);
     BoundBoxXYZ bb = { { 0, 0, height + desc.StructureZOffset }, { 24, 24, 48 } };
 
-    // Primary remap (indices 243-254) is excluded from GetClosestPaletteIndex, so Blender
-    // renders via -m closest can never produce those pixels. Route Body→secondary remap
-    // (hot pink range 202-213) and Trim→tertiary remap (yellow range 46-57) instead.
-    auto imageTemplate = ImageId(0, ride.vehicleColours[0].Body, ride.vehicleColours[0].Body, ride.vehicleColours[0].Trim);
+    // Map the three ride colours to the three remap ranges: Body→primary (243-254, "Main
+    // Color"), Trim→secondary (202-213, "Additional Color 1"), Tertiary→tertiary (46-57,
+    // "Additional Color 2"). The primary range used to be unreachable - openrct2-cli's
+    // -m closest excludes 243-254 (GetClosestPaletteIndex), so a Blender render could never
+    // produce those pixels - which is why this once routed Body→secondary and skipped
+    // primary entirely. The zone-pass authoring path (build/zone_mask.py + an authored
+    // COLOR_PRIMARY mask) places primary-range pixels deliberately, so all three ranges are
+    // now real, distinct, player-recolourable colours.
+    auto imageTemplate = ImageId(0, ride.vehicleColours[0].Body, ride.vehicleColours[0].Trim, ride.vehicleColours[0].Tertiary);
     if (stationColour != TrackStationColour)
         imageTemplate = stationColour;
     auto imageId = imageTemplate.WithIndex(baseImageId + direction * desc.FramesPerDir + animFrame);
