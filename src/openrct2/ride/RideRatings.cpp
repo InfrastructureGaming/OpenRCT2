@@ -1178,8 +1178,13 @@ static void RideRatingsCalculateValue(Ride& ride)
  */
 static money64 RideComputeUpkeep(RideRating::UpdateState& state, const Ride& ride)
 {
-    // data stored at 0x0057E3A8, incrementing 18 bytes at a time
-    auto upkeep = ride.getRideTypeDescriptor().UpkeepCosts.BaseCost;
+    // data stored at 0x0057E3A8, incrementing 18 bytes at a time. A parkobj may override the
+    // base cost per object (RideObjectEntry::upkeepBaseCostOverride / RideObject.cpp), letting
+    // a custom ride tune its running cost; the rest of the formula still applies on top.
+    const auto* rideEntry = ride.getRideEntry();
+    auto upkeep = (rideEntry != nullptr && rideEntry->upkeepBaseCostOverride.has_value())
+        ? static_cast<money64>(*rideEntry->upkeepBaseCostOverride)
+        : ride.getRideTypeDescriptor().UpkeepCosts.BaseCost;
 
     auto trackCost = ride.getRideTypeDescriptor().UpkeepCosts.CostPerTrackPiece;
     upkeep += trackCost * ride.numPoweredLifts;

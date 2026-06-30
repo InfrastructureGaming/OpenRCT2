@@ -142,6 +142,14 @@ struct RideObjectEntry
     // default BonusValue, unchanged.
     std::optional<uint8_t> bonusValueOverride;
 
+    // Set at load time from the parkobj's "upkeepCost" property (see RideObject.cpp). When
+    // present it REPLACES the ride type's UpkeepCosts.BaseCost for this entry's rides when
+    // computing the monthly running cost (RideRatings.cpp's RideComputeUpkeep) - for a fixed
+    // flat ride that base term dominates, so it's an effective running-cost dial. Stored as a
+    // plain int (cast to money64 at use) to avoid pulling the money header in here. nullopt =>
+    // the ride type's default BaseCost, unchanged.
+    std::optional<int32_t> upkeepBaseCostOverride;
+
     const CarEntry* GetCar(size_t id) const
     {
         if (id < std::size(Cars))

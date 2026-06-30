@@ -736,6 +736,14 @@ namespace OpenRCT2
                 auto bonusValue = std::clamp(Json::GetNumber<int32_t>(properties["bonusValue"]), 0, 100);
                 _legacyType.bonusValueOverride = static_cast<uint8_t>(bonusValue);
             }
+
+            // Optional per-object running cost: replaces the ride type's UpkeepCosts.BaseCost
+            // (see RideObjectEntry::upkeepBaseCostOverride + RideRatings.cpp's RideComputeUpkeep).
+            // Clamped 0-500 defensively (flat_ride_generic's base is 50).
+            if (properties.contains("upkeepCost") && properties["upkeepCost"].is_number())
+            {
+                _legacyType.upkeepBaseCostOverride = std::clamp(Json::GetNumber<int32_t>(properties["upkeepCost"]), 0, 500);
+            }
         }
 
         PopulateTablesFromJson(context, root);
