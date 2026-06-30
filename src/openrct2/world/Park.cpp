@@ -117,8 +117,16 @@ namespace OpenRCT2::Park
             if (ride.flags.hasAny(RideFlag::brokenDown, RideFlag::crashed))
                 continue;
 
+            // A parkobj may override its ride type's BonusValue per object (see
+            // RideObjectEntry::bonusValueOverride / RideObject.cpp), so a custom ride can
+            // tune how much it lifts the soft guest cap.
+            const auto* rideEntry = ride.getRideEntry();
+            const uint32_t bonusValue = (rideEntry != nullptr && rideEntry->bonusValueOverride.has_value())
+                ? *rideEntry->bonusValueOverride
+                : ride.getRideTypeDescriptor().BonusValue;
+
             // Add guest score for ride type
-            suggestedMaxGuests += ride.getRideTypeDescriptor().BonusValue;
+            suggestedMaxGuests += bonusValue;
 
             // If difficult guest generation, extra guests are available for good rides
             if (park.flags & PARK_FLAGS_DIFFICULT_GUEST_GENERATION)
@@ -135,7 +143,7 @@ namespace OpenRCT2::Park
                     continue;
 
                 // Bonus guests for good ride
-                difficultGenerationBonus += ride.getRideTypeDescriptor().BonusValue * 2;
+                difficultGenerationBonus += bonusValue * 2;
             }
         }
 

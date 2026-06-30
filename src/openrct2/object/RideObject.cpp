@@ -725,6 +725,17 @@ namespace OpenRCT2
                 }
                 _legacyType.breakdownOverride = mask;
             }
+
+            // Optional per-object guest-cap weight: replaces the ride type's BonusValue
+            // for this object's rides when computing the park's soft guest cap (see
+            // RideObjectEntry::bonusValueOverride + Park.cpp's calculateSuggestedMaxGuests).
+            // Clamped 0-100 defensively (vanilla rides span ~5-105) so a hand-edited parkobj
+            // can't trivially inflate attendance.
+            if (properties.contains("bonusValue") && properties["bonusValue"].is_number())
+            {
+                auto bonusValue = std::clamp(Json::GetNumber<int32_t>(properties["bonusValue"]), 0, 100);
+                _legacyType.bonusValueOverride = static_cast<uint8_t>(bonusValue);
+            }
         }
 
         PopulateTablesFromJson(context, root);

@@ -135,6 +135,13 @@ struct RideObjectEntry
     // type's default breakdown set unchanged.
     std::optional<FlagHolder<uint8_t, Breakdown>> breakdownOverride;
 
+    // Set at load time from the parkobj's "bonusValue" property (see RideObject.cpp). When
+    // present it REPLACES the ride type's RideTypeDescriptor::BonusValue for this entry's
+    // rides when computing the park's soft guest cap (see Park.cpp's calculateSuggestedMaxGuests),
+    // letting a custom ride contribute more or less to attendance. nullopt => the ride type's
+    // default BonusValue, unchanged.
+    std::optional<uint8_t> bonusValueOverride;
+
     const CarEntry* GetCar(size_t id) const
     {
         if (id < std::size(Cars))
