@@ -129,8 +129,13 @@ static void PaintGenericRotatingStructure(
             const uint8_t seatsInCar = car->num_seats & kVehicleSeatNumMask;
             for (uint8_t s = 0; s + 1 < seatsInCar && g < numGondolas; s += 2, g++)
             {
+                // g is the gondola's fixed PHYSICAL slot (sprite index). Skip an empty pair's
+                // draw but still advance g, so an unoccupied car leaves its slot empty rather
+                // than packing later cars' riders into the low gondola indices (which made
+                // random boarding re-display as a clockwise fill). Seats fill in order within a
+                // car, so s >= num_peeps means this pair is empty.
                 if (s >= car->num_peeps)
-                    break; // this car's remaining pairs are empty (its seats fill in order)
+                    continue;
                 const uint32_t riderIdx = baseImageId
                     + static_cast<uint32_t>(g + 1) * structureBlockSize
                     + direction * desc.FramesPerDir
