@@ -150,14 +150,6 @@ struct RideObjectEntry
     // the ride type's default BaseCost, unchanged.
     std::optional<int32_t> upkeepBaseCostOverride;
 
-    // Set at load time from the parkobj's "shuffleLoadOrder" property (see RideObject.cpp).
-    // When true, guests board a RANDOM free seat instead of the default sequential
-    // next_free_seat (see Guest.cpp's PeepChooseSeatFromCar), so a single-vehicle ride with
-    // many seats - e.g. a wheel whose seat pairs are numbered clockwise - doesn't visibly
-    // fill in seat order every time. Paired seating is preserved. false for legacy/other
-    // objects, which keep the orderly sequential fill.
-    bool shuffleLoadOrder = false;
-
     const CarEntry* GetCar(size_t id) const
     {
         if (id < std::size(Cars))

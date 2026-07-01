@@ -744,10 +744,6 @@ namespace OpenRCT2
             {
                 _legacyType.upkeepBaseCostOverride = std::clamp(Json::GetNumber<int32_t>(properties["upkeepCost"]), 0, 500);
             }
-
-            // Optional: guests board a random free seat instead of filling seats in order
-            // (see RideObjectEntry::shuffleLoadOrder + Guest.cpp's PeepChooseSeatFromCar).
-            _legacyType.shuffleLoadOrder = Json::GetBoolean(properties["shuffleLoadOrder"], false);
         }
 
         PopulateTablesFromJson(context, root);

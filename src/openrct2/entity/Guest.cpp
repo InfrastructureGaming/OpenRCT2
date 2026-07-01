@@ -2516,43 +2516,6 @@ namespace OpenRCT2
         return vehicle->GetCar(guest.CurrentCar);
     }
 
-    // Pick a free seat at random rather than the default sequential next_free_seat, so a
-    // single-vehicle ride with many seats (e.g. a wheel whose seat pairs are numbered
-    // clockwise) doesn't visibly fill in seat order every dispatch. Enabled per-object via
-    // RideObjectEntry::shuffleLoadOrder. Paired seating is preserved: a half-filled pair is
-    // always completed before a new (randomly chosen) pair is started, so riders still board
-    // two-by-two - it's only the ORDER the pairs fill in that becomes unpredictable.
-    static uint8_t ChooseRandomFreeSeat(const Vehicle& vehicle)
-    {
-        const uint8_t numSeats = vehicle.num_seats & kVehicleSeatNumMask;
-        const bool pairs = vehicle.IsUsedInPairs();
-
-        // Completing a pair: fill the empty partner of the one pair with a single occupant.
-        if (pairs && (vehicle.next_free_seat & 1))
-        {
-            for (uint8_t s = 0; s + 1 < numSeats; s += 2)
-            {
-                const bool a = !vehicle.peep[s].IsNull();
-                const bool b = !vehicle.peep[s + 1].IsNull();
-                if (a != b)
-                    return a ? static_cast<uint8_t>(s + 1) : s;
-            }
-        }
-
-        // Starting a new group: gather every free seat (or free pair-start) and pick one.
-        const uint8_t step = pairs ? 2 : 1;
-        uint8_t candidates[32]; // vehicle.peep is [32]; num_seats never exceeds it
-        uint8_t count = 0;
-        for (uint8_t s = 0; s < numSeats; s += step)
-        {
-            if (vehicle.peep[s].IsNull() && (!pairs || vehicle.peep[s + 1].IsNull()))
-                candidates[count++] = s;
-        }
-        if (count == 0)
-            return vehicle.next_free_seat; // shouldn't happen - the car was chosen for having a free seat
-        return candidates[(ScenarioRand() & 0xFF) * count >> 8];
-    }
-
     /**
      *
      *  rct2: 0x00691CD1
@@ -2572,10 +2535,6 @@ namespace OpenRCT2
             {
                 chosen_seat++;
             }
-        }
-        else if (const auto* rideEntry = ride.getRideEntry(); rideEntry != nullptr && rideEntry->shuffleLoadOrder)
-        {
-            chosen_seat = ChooseRandomFreeSeat(*vehicle);
         }
         guest->CurrentSeat = chosen_seat;
         vehicle->next_free_seat++;
