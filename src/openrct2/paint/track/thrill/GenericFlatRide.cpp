@@ -107,36 +107,43 @@ static void PaintGenericRotatingStructure(
 
     // Rider overlays — each gondola has its own full 4-direction x FramesPerDir sheet,
     // immediately following the main structure block and (for gondola g) every prior
-    // gondola's block: base + (g+1) * 4*FramesPerDir. A shared/phase-shifted sheet
-    // (Twist/Enterprise-style) isn't usable here because every gondola follows a unique
-    // hand-keyframed path rather than a copy of one curve at different offsets.
-    // Each sheet shows both of that gondola's seats; seat 2g is recoloured via secondary
-    // remap and seat 2g+1 via tertiary remap (primary remap is unreachable from the
-    // -m closest Blender pipeline, so it's left as an unused placeholder).
-    // Only drawn at zoom 0 (identical to Enterprise/Twist rider draw behavior).
-    if (vehicle != nullptr && desc.RiderFrameStride > 0 && vehicle->num_peeps > 0
-        && session.rt.zoom_level <= ZoomLevel{ 0 })
+    // gondola's block: base + (g+1) * 4*FramesPerDir. Each sheet shows both of that
+    // gondola's seats; the first is recoloured via secondary remap and the second via
+    // tertiary (primary remap is unreachable from the -m closest Blender pipeline, so it's
+    // an unused placeholder). Only drawn at zoom 0.
+    //
+    // The ride is ONE train of M gondola cars (object_json's num_gondola_cars), so walk
+    // next_vehicle_on_train and draw gondola g from car c's OWN peep[]/shirt colours. A
+    // unified gondola->(car, seat-pair) index keeps both layouts working: M==1 (one car
+    // holding K gondola-pairs in its peep[]) and M>1 (one pair per car). Guests pick a
+    // RANDOM car (existing coaster-style boarding), so a car may be occupied while a later
+    // one isn't — advance to the next car rather than breaking globally.
+    if (vehicle != nullptr && desc.RiderFrameStride > 0 && session.rt.zoom_level <= ZoomLevel{ 0 })
     {
         const uint32_t structureBlockSize = 4 * desc.FramesPerDir;
-        const uint8_t  numGondolas = desc.RiderFrameStride;
-        for (uint8_t g = 0; g < numGondolas; g++)
+        const uint8_t numGondolas = desc.RiderFrameStride;
+        uint8_t g = 0;
+        for (Vehicle* car = vehicle; car != nullptr && g < numGondolas;
+             car = getGameState().entities.GetEntity<Vehicle>(car->next_vehicle_on_train))
         {
-            const uint8_t seatA = g * 2;
-            const uint8_t seatB = seatA + 1;
-            if (seatA >= vehicle->num_peeps)
-                break;
-            const uint32_t riderIdx = baseImageId
-                + static_cast<uint32_t>(g + 1) * structureBlockSize
-                + direction * desc.FramesPerDir
-                + animFrame;
-            ImageId riderId;
-            if (stationColour != TrackStationColour)
-                riderId = stationColour.WithIndex(riderIdx);
-            else
-                riderId = ImageId(0, Drawing::Colour::black, vehicle->peep_tshirt_colours[seatA],
-                                   vehicle->peep_tshirt_colours[seatB])
-                              .WithIndex(riderIdx);
-            PaintAddImageAsChild(session, riderId, offset, bb);
+            const uint8_t seatsInCar = car->num_seats & kVehicleSeatNumMask;
+            for (uint8_t s = 0; s + 1 < seatsInCar && g < numGondolas; s += 2, g++)
+            {
+                if (s >= car->num_peeps)
+                    break; // this car's remaining pairs are empty (its seats fill in order)
+                const uint32_t riderIdx = baseImageId
+                    + static_cast<uint32_t>(g + 1) * structureBlockSize
+                    + direction * desc.FramesPerDir
+                    + animFrame;
+                ImageId riderId;
+                if (stationColour != TrackStationColour)
+                    riderId = stationColour.WithIndex(riderIdx);
+                else
+                    riderId = ImageId(0, Drawing::Colour::black, car->peep_tshirt_colours[s],
+                                       car->peep_tshirt_colours[s + 1])
+                                  .WithIndex(riderIdx);
+                PaintAddImageAsChild(session, riderId, offset, bb);
+            }
         }
     }
 
