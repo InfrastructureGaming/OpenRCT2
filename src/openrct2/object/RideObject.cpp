@@ -1302,36 +1302,49 @@ namespace OpenRCT2
             {
                 for (auto& jPhase : jProg["phases"])
                 {
-                    uint16_t startFrame  = Json::GetNumber<uint16_t>(jPhase["startFrame"]);
-                    uint16_t endFrame    = Json::GetNumber<uint16_t>(jPhase["endFrame"]);
-                    uint8_t  ticksPerFrame = Json::GetNumber<uint8_t>(jPhase["ticksPerFrame"], 1);
-                    if (ticksPerFrame < 1) ticksPerFrame = 1;
-                    // Optional reverse playback: emit the [startFrame, endFrame] range
-                    // backwards so one authored sprite range can drive a motion and its
-                    // inverse without duplicating any frames (e.g. reuse a "restraints
-                    // closing" range, reversed, to open them). Absent/false is forward,
-                    // byte-for-byte identical to the previous behaviour.
-                    bool playReverse = jPhase.contains("playReverse")
-                        && Json::GetBoolean(jPhase["playReverse"]);
-
-                    // Sequential frame map with optional time-stretching and direction:
-                    // forward [start, ..., end, 0xFFFF] or reverse [end, ..., start, 0xFFFF],
-                    // each frame repeated ticksPerFrame times.
                     auto& frameMap = data->FrameMaps.emplace_back();
-                    uint16_t count = (endFrame >= startFrame) ? (endFrame - startFrame + 1) : 0;
-                    frameMap.reserve(static_cast<size_t>(count) * ticksPerFrame + 1);
-                    // Index-based rather than `for (f = endFrame; f >= startFrame; --f)`:
-                    // that naive reverse loop underflows uint16_t and never terminates when
-                    // startFrame == 0 (f wraps to 65535). Here i < count guarantees
-                    // endFrame - i >= startFrame >= 0, so the subtraction is always safe.
-                    for (uint16_t i = 0; i < count; ++i)
+                    if (jPhase.contains("spriteMap") && jPhase["spriteMap"].is_array())
                     {
-                        uint16_t f = playReverse ? static_cast<uint16_t>(endFrame - i)
-                                                 : static_cast<uint16_t>(startFrame + i);
-                        for (uint8_t t = 0; t < ticksPerFrame; ++t)
-                            frameMap.push_back(f);
+                        // Explicit per-tick frame sequence: a parametric motion the tool
+                        // compiled into a time-to-sprite map over the angle atlas (one pose
+                        // per degree - see the tool's build/motion.py). Copied verbatim then
+                        // terminated; startFrame/endFrame/ticksPerFrame/playReverse don't apply
+                        // (the timing/direction is already baked into the sequence).
+                        const auto& jMap = jPhase["spriteMap"];
+                        frameMap.reserve(jMap.size() + 1);
+                        for (const auto& jFrame : jMap)
+                            frameMap.push_back(Json::GetNumber<uint16_t>(jFrame));
                     }
-                    frameMap.push_back(0xFFFF);
+                    else
+                    {
+                        uint16_t startFrame  = Json::GetNumber<uint16_t>(jPhase["startFrame"]);
+                        uint16_t endFrame    = Json::GetNumber<uint16_t>(jPhase["endFrame"]);
+                        uint8_t  ticksPerFrame = Json::GetNumber<uint8_t>(jPhase["ticksPerFrame"], 1);
+                        if (ticksPerFrame < 1) ticksPerFrame = 1;
+                        // Optional reverse playback: emit the [startFrame, endFrame] range
+                        // backwards so one authored sprite range can drive a motion and its
+                        // inverse without duplicating any frames (e.g. reuse a "restraints
+                        // closing" range, reversed, to open them). Absent/false is forward,
+                        // byte-for-byte identical to the previous behaviour.
+                        bool playReverse = jPhase.contains("playReverse")
+                            && Json::GetBoolean(jPhase["playReverse"]);
+
+                        // Sequential frame map with optional time-stretching and direction:
+                        // forward [start, ..., end] or reverse [end, ..., start], each frame
+                        // repeated ticksPerFrame times. Index-based rather than
+                        // `for (f = endFrame; f >= startFrame; --f)`: that naive reverse loop
+                        // underflows uint16_t and never terminates when startFrame == 0.
+                        uint16_t count = (endFrame >= startFrame) ? (endFrame - startFrame + 1) : 0;
+                        frameMap.reserve(static_cast<size_t>(count) * ticksPerFrame + 1);
+                        for (uint16_t i = 0; i < count; ++i)
+                        {
+                            uint16_t f = playReverse ? static_cast<uint16_t>(endFrame - i)
+                                                     : static_cast<uint16_t>(startFrame + i);
+                            for (uint8_t t = 0; t < ticksPerFrame; ++t)
+                                frameMap.push_back(f);
+                        }
+                    }
+                    frameMap.push_back(0xFFFF); // phase-end terminator (UpdateFlatRideGeneric)
 
                     FlatRideAnimationPhase phase{};
                     phase.TimeToSpriteMap              = frameMap.data();
