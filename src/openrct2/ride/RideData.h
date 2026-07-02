@@ -513,6 +513,11 @@ struct FlatRideRotationDescriptor
     uint8_t  BbLengthY        = 24;
     uint8_t  BbLengthZ        = 48;
     int8_t   StructureZOffset =  7;  // z added to height for the structure draw; default 7 matches legacy hardcoded value
+    uint8_t  BaseRotation     =  0;  // 0-3 quarter-turns added to the view direction when picking the
+                                     // structure/rider sprite, turning the ride relative to its
+                                     // footprint. Lets a ride whose sprite is wider-than-long sit
+                                     // correctly on a footprint the engine normalized to width<=length
+                                     // (CustomRideLoader's FootprintTrackElemType) - see AttractionEditorTool.
     // Override vehicle spriteData bounds used by invalidate() when the ride footprint is
     // larger than the vehicle's native sprite size. 0 = use carEntry defaults.
     // Required when the entity sits at the origin tile but the visual is several tiles away

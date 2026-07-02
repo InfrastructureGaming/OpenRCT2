@@ -102,7 +102,11 @@ static void PaintGenericRotatingStructure(
     auto imageTemplate = ImageId(0, ride.vehicleColours[0].Body, ride.vehicleColours[0].Trim, ride.vehicleColours[0].Tertiary);
     if (stationColour != TrackStationColour)
         imageTemplate = stationColour;
-    auto imageId = imageTemplate.WithIndex(baseImageId + direction * desc.FramesPerDir + animFrame);
+    // BaseRotation (0-3 quarter-turns) turns the ride relative to its footprint by picking the
+    // sprite for a rotated view direction; the draw position (offset/bb) is unaffected. Lets a
+    // wider-than-long ride sit correctly on a footprint the engine normalized to width<=length.
+    const uint8_t spriteDirection = (direction + desc.BaseRotation) & 3;
+    auto imageId = imageTemplate.WithIndex(baseImageId + spriteDirection * desc.FramesPerDir + animFrame);
     PaintAddImageAsParent(session, imageId, offset, bb);
 
     // Rider overlays — each gondola has its own full 4-direction x FramesPerDir sheet,
@@ -138,7 +142,7 @@ static void PaintGenericRotatingStructure(
                     continue;
                 const uint32_t riderIdx = baseImageId
                     + static_cast<uint32_t>(g + 1) * structureBlockSize
-                    + direction * desc.FramesPerDir
+                    + spriteDirection * desc.FramesPerDir
                     + animFrame;
                 ImageId riderId;
                 if (stationColour != TrackStationColour)

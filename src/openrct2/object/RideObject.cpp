@@ -1266,6 +1266,9 @@ namespace OpenRCT2
         data->Descriptor.InvalidationHeightAbove = Json::GetNumber<uint8_t>(j["invalidationHeightAbove"]);
         data->Descriptor.InvalidationHeightBelow = Json::GetNumber<uint8_t>(j["invalidationHeightBelow"]);
         data->Descriptor.RiderFrameStride        = Json::GetNumber<uint8_t>(j["riderFrameStride"]);
+        // Quarter-turns to rotate the sprite relative to the footprint (0-3); masked so a
+        // stray value can't index outside the 4 direction blocks.
+        data->Descriptor.BaseRotation            = Json::GetNumber<uint8_t>(j["baseRotation"], 0) & 3;
 
         if (!j.contains("programs") || !j["programs"].is_array())
         {
