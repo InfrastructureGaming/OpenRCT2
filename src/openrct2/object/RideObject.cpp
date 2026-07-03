@@ -1269,6 +1269,9 @@ namespace OpenRCT2
         // Quarter-turns to rotate the sprite relative to the footprint (0-3); masked so a
         // stray value can't index outside the 4 direction blocks.
         data->Descriptor.BaseRotation            = Json::GetNumber<uint8_t>(j["baseRotation"], 0) & 3;
+        // 180-degree symmetric ride: views 2,3 are identical to 0,1, so the sheet stores only
+        // 2 direction-blocks and spriteDirection folds 2->0, 3->1 (halves the atlas).
+        data->Descriptor.SymmetricDirections     = Json::GetBoolean(j["symmetricDirections"], false) ? 1 : 0;
 
         if (!j.contains("programs") || !j["programs"].is_array())
         {

@@ -105,13 +105,16 @@ static void PaintGenericRotatingStructure(
     // BaseRotation (0-3 quarter-turns) turns the ride relative to its footprint by picking the
     // sprite for a rotated view direction; the draw position (offset/bb) is unaffected. Lets a
     // wider-than-long ride sit correctly on a footprint the engine normalized to width<=length.
-    const uint8_t spriteDirection = (direction + desc.BaseRotation) & 3;
+    // SymmetricDirections folds views 2,3 -> 0,1 (numDirs=2): a 180-degree-symmetric ride stores
+    // only 2 direction-blocks, so the atlas (structure + every rider) is half the size.
+    const uint8_t numDirs = desc.SymmetricDirections ? 2 : 4;
+    const uint8_t spriteDirection = ((direction + desc.BaseRotation) & 3) % numDirs;
     auto imageId = imageTemplate.WithIndex(baseImageId + spriteDirection * desc.FramesPerDir + animFrame);
     PaintAddImageAsParent(session, imageId, offset, bb);
 
-    // Rider overlays — each gondola has its own full 4-direction x FramesPerDir sheet,
+    // Rider overlays — each gondola has its own full numDirs-direction x FramesPerDir sheet,
     // immediately following the main structure block and (for gondola g) every prior
-    // gondola's block: base + (g+1) * 4*FramesPerDir. Each sheet shows both of that
+    // gondola's block: base + (g+1) * numDirs*FramesPerDir. Each sheet shows both of that
     // gondola's seats; the first is recoloured via secondary remap and the second via
     // tertiary (primary remap is unreachable from the -m closest Blender pipeline, so it's
     // an unused placeholder). Only drawn at zoom 0.
@@ -124,7 +127,7 @@ static void PaintGenericRotatingStructure(
     // one isn't — advance to the next car rather than breaking globally.
     if (vehicle != nullptr && desc.RiderFrameStride > 0 && session.rt.zoom_level <= ZoomLevel{ 0 })
     {
-        const uint32_t structureBlockSize = 4 * desc.FramesPerDir;
+        const uint32_t structureBlockSize = numDirs * desc.FramesPerDir;
         const uint8_t numGondolas = desc.RiderFrameStride;
         uint8_t g = 0;
         for (Vehicle* car = vehicle; car != nullptr && g < numGondolas;

@@ -493,10 +493,11 @@ constexpr RtdFlags kRtdFlagsCommonCoasterNonAlt = { RtdFlag::showInTrackDesigner
                                                     RtdFlag::hasEntranceAndExit };
 
 // Data-driven paint parameters for simple rotation-style flat rides (Twist/Merry-Go-Round family).
-// Image formula: BaseImageId + (direction * FramesPerDir) + animFrame
-// Rider formula (per gondola g, seats 2g/2g+1): BaseImageId + (g+1) * 4*FramesPerDir
-//                + (direction * FramesPerDir) + animFrame
-// Each gondola gets its own full 4-direction x FramesPerDir sheet — a shared/phase-shifted
+// numDirs = SymmetricDirections ? 2 : 4 (see below), and spriteDirection folds into it.
+// Image formula: BaseImageId + (spriteDirection * FramesPerDir) + animFrame
+// Rider formula (per gondola g, seats 2g/2g+1): BaseImageId + (g+1) * numDirs*FramesPerDir
+//                + (spriteDirection * FramesPerDir) + animFrame
+// Each gondola gets its own full numDirs-direction x FramesPerDir sheet — a shared/phase-shifted
 // sheet (Twist/Enterprise-style) only works when every gondola follows a copy of the same
 // motion curve at different offsets, which doesn't hold for hand-keyframed rides where each
 // gondola has a unique path. Riders are recoloured via secondary remap (seat 2g) and
@@ -518,6 +519,9 @@ struct FlatRideRotationDescriptor
                                      // footprint. Lets a ride whose sprite is wider-than-long sit
                                      // correctly on a footprint the engine normalized to width<=length
                                      // (CustomRideLoader's FootprintTrackElemType) - see AttractionEditorTool.
+    uint8_t  SymmetricDirections = 0;  // 1 = ride is 180-degree rotationally symmetric, so views 2,3 are
+                                     // identical to 0,1. The sheet then stores only 2 direction-blocks and
+                                     // spriteDirection folds 2->0, 3->1 (numDirs=2), halving the atlas.
     // Override vehicle spriteData bounds used by invalidate() when the ride footprint is
     // larger than the vehicle's native sprite size. 0 = use carEntry defaults.
     // Required when the entity sits at the origin tile but the visual is several tiles away
