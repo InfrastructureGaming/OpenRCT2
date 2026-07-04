@@ -143,10 +143,20 @@ static void PaintGenericRotatingStructure(
                 // car, so s >= num_peeps means this pair is empty.
                 if (s >= car->num_peeps)
                     continue;
-                const uint32_t riderIdx = baseImageId
-                    + static_cast<uint32_t>(g + 1) * structureBlockSize
-                    + spriteDirection * desc.FramesPerDir
-                    + animFrame;
+                // SharedRiderSheet: all gondolas draw from ONE rider block (right after the
+                // structure), each phase-offset by g * RiderPhaseStride so cabin g's rider lines up
+                // with where the structure draws cabin g. Otherwise each gondola has its own block.
+                uint32_t riderIdx;
+                if (desc.SharedRiderSheet && desc.FramesPerDir > 0)
+                {
+                    const uint16_t phaseFrame = (animFrame + g * desc.RiderPhaseStride) % desc.FramesPerDir;
+                    riderIdx = baseImageId + structureBlockSize + spriteDirection * desc.FramesPerDir + phaseFrame;
+                }
+                else
+                {
+                    riderIdx = baseImageId + static_cast<uint32_t>(g + 1) * structureBlockSize
+                        + spriteDirection * desc.FramesPerDir + animFrame;
+                }
                 ImageId riderId;
                 if (stationColour != TrackStationColour)
                     riderId = stationColour.WithIndex(riderIdx);

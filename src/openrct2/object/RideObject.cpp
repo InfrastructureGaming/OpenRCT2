@@ -1272,6 +1272,12 @@ namespace OpenRCT2
         // 180-degree symmetric ride: views 2,3 are identical to 0,1, so the sheet stores only
         // 2 direction-blocks and spriteDirection folds 2->0, 3->1 (halves the atlas).
         data->Descriptor.SymmetricDirections     = Json::GetBoolean(j["symmetricDirections"], false) ? 1 : 0;
+        // Shared rider sheet (Phase 2): every gondola samples one sheet phase-offset by RiderPhaseStride.
+        data->Descriptor.SharedRiderSheet        = Json::GetBoolean(j["sharedRiderSheet"], false) ? 1 : 0;
+        data->Descriptor.RiderPhaseStride        = Json::GetNumber<uint16_t>(j["riderPhaseStride"], 0);
+        // Batch rotate-to-load (Phase 3): board PlatformCabins gondolas at a time, rotating between batches.
+        data->Descriptor.RotateToLoad            = Json::GetBoolean(j["rotateToLoad"], false) ? 1 : 0;
+        data->Descriptor.PlatformCabins          = Json::GetNumber<uint8_t>(j["platformCabins"], 0);
 
         if (!j.contains("programs") || !j["programs"].is_array())
         {

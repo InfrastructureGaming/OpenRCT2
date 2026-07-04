@@ -507,7 +507,7 @@ struct FlatRideRotationDescriptor
 {
     uint32_t BaseImageId      = 0;   // first sprite in the sheet
     uint16_t FramesPerDir     = 0;   // animation frames per direction
-    uint8_t  RiderFrameStride = 0;   // number of gondola rider-pair sheets (0 = no riders)
+    uint8_t  RiderFrameStride = 0;   // gondola count M (0 = no riders); = rider sheet count unless SharedRiderSheet
     int8_t   DrawOffsetX      = 0;   // pixel offset from tile centre
     int8_t   DrawOffsetY      = 0;
     uint8_t  BbLengthX        = 24;  // occlusion bounding-box dimensions
@@ -522,6 +522,13 @@ struct FlatRideRotationDescriptor
     uint8_t  SymmetricDirections = 0;  // 1 = ride is 180-degree rotationally symmetric, so views 2,3 are
                                      // identical to 0,1. The sheet then stores only 2 direction-blocks and
                                      // spriteDirection folds 2->0, 3->1 (numDirs=2), halving the atlas.
+    uint8_t  SharedRiderSheet = 0;   // 1 = all M gondolas share ONE rider sheet (Ferris/Enterprise): gondola g
+                                     // samples it at (animFrame + g*RiderPhaseStride) % FramesPerDir, recoloured
+                                     // per-cabin, instead of owning a full sheet. Collapses M rider sheets -> 1.
+    uint16_t RiderPhaseStride = 0;   // frames of shared-sheet offset per gondola (= FramesPerDir / M when even).
+    uint8_t  RotateToLoad     = 0;   // 1 = batch rotate-to-load: board PlatformCabins gondolas, rotate that many
+                                     // cabin-spacings, board the next batch, ... (see FindVehicleToEnter gate).
+    uint8_t  PlatformCabins   = 0;   // gondolas the loading platform holds at once (RotateToLoad batch size).
     // Override vehicle spriteData bounds used by invalidate() when the ride footprint is
     // larger than the vehicle's native sprite size. 0 = use carEntry defaults.
     // Required when the entity sits at the origin tile but the visual is several tiles away
