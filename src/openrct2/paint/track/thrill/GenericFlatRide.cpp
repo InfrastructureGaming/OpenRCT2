@@ -94,10 +94,7 @@ static void PaintGenericRotatingStructure(
     // redundant draws sort correctly against its own host tile's neighbours, while the sprite
     // itself is redrawn at the shared centre point so it visually appears in the right place.
     CoordsXYZ offset(xOffset, yOffset, height + desc.StructureZOffset);
-    // Bounding box drives the painter's-algorithm sort. BbLengthZ must reach the top of a
-    // tall ride or its upper portion loses the depth-sort against the tiles behind it and
-    // gets overdrawn (clipped). Defaults 24/24/48 keep short rides unchanged.
-    BoundBoxXYZ bb = { { 0, 0, height + desc.StructureZOffset }, { desc.BbLengthX, desc.BbLengthY, desc.BbLengthZ } };
+    BoundBoxXYZ bb = { { 0, 0, height + desc.StructureZOffset }, { 24, 24, 48 } };
 
     // Map the three ride colours to the three remap ranges: Body→primary (243-254, "Main
     // Color"), Trim→secondary (202-213, "Additional Color 1"), Tertiary→tertiary (46-57,
