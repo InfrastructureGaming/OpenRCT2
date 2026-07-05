@@ -13,6 +13,7 @@
 #include "../audio/Audio.h"
 #include "../entity/Particle.h"
 #include "../entity/Yaw.hpp"
+#include "../interface/Viewport.h"
 #include "../math/Trigonometry.hpp"
 #include "../world/Map.h"
 #include "../world/tile_element/TileElement.h"
@@ -389,7 +390,23 @@ void Vehicle::UpdateFlatRideGeneric()
         if (sprite == flatRideAnimationFrame)
             return;
         flatRideAnimationFrame = sprite;
-        invalidate();
+        // A large flat ride's sprite can exceed EntitySpriteData's uint8 (255px) redraw cap,
+        // so invalidate the full descriptor-sized region DIRECTLY (ViewportsInvalidate takes
+        // int32) rather than via the entity's capped bounds - otherwise a tall ride's top
+        // isn't redrawn and shows the tiles behind it. The 3rd/4th args are the above/below
+        // extents, matching EntityBase::Invalidate (spriteData.heightMin/heightMax). Falls
+        // back to the entity's own bounds when the descriptor sets no explicit size.
+        if (rotation.InvalidationHalfWidth > 0 || rotation.InvalidationHeightAbove > 0
+            || rotation.InvalidationHeightBelow > 0)
+        {
+            ViewportsInvalidate(
+                getLocation(), rotation.InvalidationHalfWidth, rotation.InvalidationHeightAbove,
+                rotation.InvalidationHeightBelow, ZoomLevel{ 2 });
+        }
+        else
+        {
+            invalidate();
+        }
         return;
     }
 

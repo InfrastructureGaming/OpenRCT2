@@ -529,14 +529,15 @@ struct FlatRideRotationDescriptor
     uint8_t  RotateToLoad     = 0;   // 1 = batch rotate-to-load: board PlatformCabins gondolas, rotate that many
                                      // cabin-spacings, board the next batch, ... (see FindVehicleToEnter gate).
     uint8_t  PlatformCabins   = 0;   // gondolas the loading platform holds at once (RotateToLoad batch size).
-    // Override vehicle spriteData bounds used by invalidate() when the ride footprint is
-    // larger than the vehicle's native sprite size. 0 = use carEntry defaults.
-    // Required when the entity sits at the origin tile but the visual is several tiles away
-    // (e.g. 5×5 rides: sprite centre is world +64,+64 from entity = ±128px horizontal
-    // or ±64px vertical in isometric screen space depending on camera rotation).
-    uint8_t  InvalidationHalfWidth   = 0;
-    uint8_t  InvalidationHeightAbove = 0;
-    uint8_t  InvalidationHeightBelow = 0;
+    // Redraw region for the ride's structure when its animation frame changes. The paint
+    // invalidates this region DIRECTLY (ViewportsInvalidate takes int32) rather than via the
+    // entity's EntitySpriteData, whose fields are uint8 (255px max) AND serialized into the
+    // park save - so these are uint16 to let a large high-res sprite (e.g. a tall Ferris
+    // wheel, ~648px) redraw its full height without a save-format change. 0 = fall back to
+    // the entity's own (capped) bounds. See Vehicle::UpdateFlatRideGeneric.
+    uint16_t InvalidationHalfWidth   = 0;
+    uint16_t InvalidationHeightAbove = 0;
+    uint16_t InvalidationHeightBelow = 0;
 
     // Multi-phase / multi-program animation (see Vehicle::UpdateFlatRideGeneric).
     // nullptr = legacy 3-phase Start/Loop/End behaviour via UpdateRotatingDefault.

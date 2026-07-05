@@ -1267,9 +1267,11 @@ namespace OpenRCT2
         data->Descriptor.BbLengthX               = Json::GetNumber<uint8_t>(j["bbLengthX"], 24);
         data->Descriptor.BbLengthY               = Json::GetNumber<uint8_t>(j["bbLengthY"], 24);
         data->Descriptor.BbLengthZ               = Json::GetNumber<uint8_t>(j["bbLengthZ"], 48);
-        data->Descriptor.InvalidationHalfWidth   = Json::GetNumber<uint8_t>(j["invalidationHalfWidth"]);
-        data->Descriptor.InvalidationHeightAbove = Json::GetNumber<uint8_t>(j["invalidationHeightAbove"]);
-        data->Descriptor.InvalidationHeightBelow = Json::GetNumber<uint8_t>(j["invalidationHeightBelow"]);
+        // uint16 (not uint8): a large high-res sprite needs a redraw region past 255px - see
+        // FlatRideRotationDescriptor and Vehicle::UpdateFlatRideGeneric's direct invalidation.
+        data->Descriptor.InvalidationHalfWidth   = Json::GetNumber<uint16_t>(j["invalidationHalfWidth"]);
+        data->Descriptor.InvalidationHeightAbove = Json::GetNumber<uint16_t>(j["invalidationHeightAbove"]);
+        data->Descriptor.InvalidationHeightBelow = Json::GetNumber<uint16_t>(j["invalidationHeightBelow"]);
         data->Descriptor.RiderFrameStride        = Json::GetNumber<uint8_t>(j["riderFrameStride"]);
         // Quarter-turns to rotate the sprite relative to the footprint (0-3); masked so a
         // stray value can't index outside the 4 direction blocks.

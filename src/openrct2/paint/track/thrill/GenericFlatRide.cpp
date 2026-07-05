@@ -74,12 +74,17 @@ static void PaintGenericRotatingStructure(
             // Without this, invalidate() only marks dirty a small area around the entity's
             // origin tile; the visual (drawn at the footprint centre) falls outside that
             // area in camera rotations 1/2/3, causing direction-dependent sprite staleness.
+            // These fields are uint8 (255 max) and serialized, so they're clamped here for
+            // the selection/placement rect; the ANIMATION redraw uses the full uint16
+            // descriptor bounds directly (see Vehicle::UpdateFlatRideGeneric), which is what
+            // lets a tall sprite past 255px redraw its whole height.
+            constexpr uint16_t kMaxSpriteBound = 255;
             if (desc.InvalidationHalfWidth > 0)
-                vehicle->spriteData.width = desc.InvalidationHalfWidth;
+                vehicle->spriteData.width = static_cast<uint8_t>(std::min<uint16_t>(kMaxSpriteBound, desc.InvalidationHalfWidth));
             if (desc.InvalidationHeightAbove > 0)
-                vehicle->spriteData.heightMin = desc.InvalidationHeightAbove;
+                vehicle->spriteData.heightMin = static_cast<uint8_t>(std::min<uint16_t>(kMaxSpriteBound, desc.InvalidationHeightAbove));
             if (desc.InvalidationHeightBelow > 0)
-                vehicle->spriteData.heightMax = desc.InvalidationHeightBelow;
+                vehicle->spriteData.heightMax = static_cast<uint8_t>(std::min<uint16_t>(kMaxSpriteBound, desc.InvalidationHeightBelow));
             animFrame = vehicle->flatRideAnimationFrame % desc.FramesPerDir;
         }
     }
