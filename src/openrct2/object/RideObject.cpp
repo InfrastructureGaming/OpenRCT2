@@ -1262,6 +1262,11 @@ namespace OpenRCT2
 
         data->Descriptor.FramesPerDir            = Json::GetNumber<uint16_t>(j["framesPerDir"]);
         data->Descriptor.StructureZOffset        = Json::GetNumber<int8_t>(j["structureZOffset"], 7);
+        // Paint bounding-box (sort volume); BbLengthZ must reach a tall ride's top or it clips.
+        // Defaults match the legacy hardcoded 24/24/48 so untouched rides render identically.
+        data->Descriptor.BbLengthX               = Json::GetNumber<uint8_t>(j["bbLengthX"], 24);
+        data->Descriptor.BbLengthY               = Json::GetNumber<uint8_t>(j["bbLengthY"], 24);
+        data->Descriptor.BbLengthZ               = Json::GetNumber<uint8_t>(j["bbLengthZ"], 48);
         data->Descriptor.InvalidationHalfWidth   = Json::GetNumber<uint8_t>(j["invalidationHalfWidth"]);
         data->Descriptor.InvalidationHeightAbove = Json::GetNumber<uint8_t>(j["invalidationHeightAbove"]);
         data->Descriptor.InvalidationHeightBelow = Json::GetNumber<uint8_t>(j["invalidationHeightBelow"]);
