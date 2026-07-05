@@ -510,9 +510,14 @@ struct FlatRideRotationDescriptor
     uint8_t  RiderFrameStride = 0;   // gondola count M (0 = no riders); = rider sheet count unless SharedRiderSheet
     int8_t   DrawOffsetX      = 0;   // pixel offset from tile centre
     int8_t   DrawOffsetY      = 0;
-    uint8_t  BbLengthX        = 24;  // occlusion bounding-box dimensions
-    uint8_t  BbLengthY        = 24;
-    uint8_t  BbLengthZ        = 48;
+    // Paint bounding-box (painter's-algorithm SORT volume). uint16 (not uint8/255) so a
+    // tall high-res ride can set BbLengthZ past 255 - the sort box must reach the top of
+    // the sprite or its upper portion loses the depth-sort against the tiles behind it and
+    // gets overdrawn. Like the Invalidation* fields, these come from the ride object's JSON
+    // (not the park save), so widening them changes no save format.
+    uint16_t BbLengthX        = 24;
+    uint16_t BbLengthY        = 24;
+    uint16_t BbLengthZ        = 48;
     int8_t   StructureZOffset =  7;  // z added to height for the structure draw; default 7 matches legacy hardcoded value
     uint8_t  BaseRotation     =  0;  // 0-3 quarter-turns added to the view direction when picking the
                                      // structure/rider sprite, turning the ride relative to its

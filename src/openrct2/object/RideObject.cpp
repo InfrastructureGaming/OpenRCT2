@@ -1263,10 +1263,11 @@ namespace OpenRCT2
         data->Descriptor.FramesPerDir            = Json::GetNumber<uint16_t>(j["framesPerDir"]);
         data->Descriptor.StructureZOffset        = Json::GetNumber<int8_t>(j["structureZOffset"], 7);
         // Paint bounding-box (sort volume); BbLengthZ must reach a tall ride's top or it clips.
-        // Defaults match the legacy hardcoded 24/24/48 so untouched rides render identically.
-        data->Descriptor.BbLengthX               = Json::GetNumber<uint8_t>(j["bbLengthX"], 24);
-        data->Descriptor.BbLengthY               = Json::GetNumber<uint8_t>(j["bbLengthY"], 24);
-        data->Descriptor.BbLengthZ               = Json::GetNumber<uint8_t>(j["bbLengthZ"], 48);
+        // uint16 so a large high-res ride can exceed 255. Defaults match the legacy hardcoded
+        // 24/24/48 so untouched rides render identically.
+        data->Descriptor.BbLengthX               = Json::GetNumber<uint16_t>(j["bbLengthX"], 24);
+        data->Descriptor.BbLengthY               = Json::GetNumber<uint16_t>(j["bbLengthY"], 24);
+        data->Descriptor.BbLengthZ               = Json::GetNumber<uint16_t>(j["bbLengthZ"], 48);
         // uint16 (not uint8): a large high-res sprite needs a redraw region past 255px - see
         // FlatRideRotationDescriptor and Vehicle::UpdateFlatRideGeneric's direct invalidation.
         data->Descriptor.InvalidationHalfWidth   = Json::GetNumber<uint16_t>(j["invalidationHalfWidth"]);
