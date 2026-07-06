@@ -114,8 +114,27 @@ static void PaintGenericRotatingStructure(
     // only 2 direction-blocks, so the atlas (structure + every rider) is half the size.
     const uint8_t numDirs = desc.SymmetricDirections ? 2 : 4;
     const uint8_t spriteDirection = ((direction + desc.BaseRotation) & 3) % numDirs;
-    auto imageId = imageTemplate.WithIndex(baseImageId + spriteDirection * desc.FramesPerDir + animFrame);
-    PaintAddImageAsParent(session, imageId, offset, bb);
+    const uint32_t frameIndex = spriteDirection * desc.FramesPerDir + animFrame;
+
+    if (desc.StructureBands <= 1)
+    {
+        PaintAddImageAsParent(session, imageTemplate.WithIndex(baseImageId + frameIndex), offset, bb);
+    }
+    else
+    {
+        // SPIKE: vertical decomposition (project_tall_sprite_wall). The sheet stores StructureBands
+        // band-sprites consecutively per (dir, frame), so band k = frameIndex*bands + k. Every band is
+        // drawn at the same 'offset' - its own g1 yOffset stacks it on screen - but each gets a
+        // TILE-SCALE local bound box marching up the structure's world-Z. Many small boxes sort
+        // correctly in partial redraws where the single giant box could not (bb=2500 proved that).
+        const uint32_t bandBase = baseImageId + frameIndex * desc.StructureBands;
+        const int32_t bandZ = std::max<int32_t>(1, desc.StructureSortHeight / desc.StructureBands);
+        for (uint8_t k = 0; k < desc.StructureBands; k++)
+        {
+            BoundBoxXYZ bandBb = { { 0, 0, height + desc.StructureZOffset + k * bandZ }, { 24, 24, bandZ } };
+            PaintAddImageAsParent(session, imageTemplate.WithIndex(bandBase + k), offset, bandBb);
+        }
+    }
 
     // Rider overlays — each gondola has its own full numDirs-direction x FramesPerDir sheet,
     // immediately following the main structure block and (for gondola g) every prior
@@ -132,7 +151,9 @@ static void PaintGenericRotatingStructure(
     // one isn't — advance to the next car rather than breaking globally.
     if (vehicle != nullptr && desc.RiderFrameStride > 0 && session.rt.zoom_level <= ZoomLevel{ 0 })
     {
-        const uint32_t structureBlockSize = numDirs * desc.FramesPerDir;
+        // Structure block is bands-per-frame when decomposed (SPIKE), so riders that follow it
+        // start after the full banded block.
+        const uint32_t structureBlockSize = numDirs * desc.FramesPerDir * desc.StructureBands;
         const uint8_t numGondolas = desc.RiderFrameStride;
         uint8_t g = 0;
         for (Vehicle* car = vehicle; car != nullptr && g < numGondolas;

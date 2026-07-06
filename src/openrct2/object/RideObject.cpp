@@ -1267,6 +1267,10 @@ namespace OpenRCT2
         data->Descriptor.InvalidationHalfWidth   = Json::GetNumber<uint16_t>(j["invalidationHalfWidth"]);
         data->Descriptor.InvalidationHeightAbove = Json::GetNumber<uint16_t>(j["invalidationHeightAbove"]);
         data->Descriptor.InvalidationHeightBelow = Json::GetNumber<uint16_t>(j["invalidationHeightBelow"]);
+        // Vertical decomposition (SPIKE): slice the structure into StructureBands banded draws,
+        // each with a tile-scale bb, to beat the tall-sprite partial-redraw flicker. Default 1 = off.
+        data->Descriptor.StructureBands          = Json::GetNumber<uint8_t>(j["structureBands"], 1);
+        data->Descriptor.StructureSortHeight     = Json::GetNumber<uint16_t>(j["structureSortHeight"], 0);
         data->Descriptor.RiderFrameStride        = Json::GetNumber<uint8_t>(j["riderFrameStride"]);
         // Quarter-turns to rotate the sprite relative to the footprint (0-3); masked so a
         // stray value can't index outside the 4 direction blocks.

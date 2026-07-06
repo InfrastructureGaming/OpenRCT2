@@ -539,6 +539,15 @@ struct FlatRideRotationDescriptor
     uint16_t InvalidationHeightAbove = 0;
     uint16_t InvalidationHeightBelow = 0;
 
+    // Vertical decomposition (SPIKE - throwaway experiment, gated by StructureBands==1 default).
+    // A sprite far taller than its tile footprint flickers on partial viewport redraws because
+    // its one giant bound box can't be sorted locally (see project_tall_sprite_wall). Slicing the
+    // structure into StructureBands horizontal bands, each drawn as its own paint struct with a
+    // tile-scale local bound box stacked up StructureSortHeight world-Z, restores paint locality
+    // (like a coaster's per-tile segments). StructureBands==1 = the legacy single draw, untouched.
+    uint8_t  StructureBands      = 1;   // horizontal slices the structure sheet is cut into
+    uint16_t StructureSortHeight = 0;   // total world-Z the bands tile across (per-band bb Z = this / bands)
+
     // Multi-phase / multi-program animation (see Vehicle::UpdateFlatRideGeneric).
     // nullptr = legacy 3-phase Start/Loop/End behaviour via UpdateRotatingDefault.
     // When set, FramesPerDir is the TOTAL combined frame count across every phase
