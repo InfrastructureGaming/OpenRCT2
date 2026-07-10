@@ -30,7 +30,7 @@ using namespace OpenRCT2;
 // Returns the FlatRideRotationDescriptor for a ride, preferring a descriptor parsed
 // from the ride's parkobj JSON ("flatRideAnimation" block) over the compiled RTD default.
 // Allows fully data-driven flat rides defined in a parkobj with no per-ride C++ code.
-static const FlatRideRotationDescriptor& GetFlatRideDescriptor(const Ride& ride)
+const FlatRideRotationDescriptor& GetFlatRideDescriptor(const Ride& ride)
 {
     const auto* entry = GetRideEntryByIndex(ride.subtype);
     if (entry != nullptr && entry->flatRideAnimation != nullptr)
@@ -117,57 +117,71 @@ static void PaintGenericRotatingStructure(
     auto imageId = imageTemplate.WithIndex(baseImageId + spriteDirection * desc.FramesPerDir + animFrame);
     PaintAddImageAsParent(session, imageId, offset, bb);
 
-    // Rider overlays — each gondola has its own full numDirs-direction x FramesPerDir sheet,
-    // immediately following the main structure block and (for gondola g) every prior
-    // gondola's block: base + (g+1) * numDirs*FramesPerDir. Each sheet shows both of that
-    // gondola's seats; the first is recoloured via secondary remap and the second via
-    // tertiary (primary remap is unreachable from the -m closest Blender pipeline, so it's
-    // an unused placeholder). Only drawn at zoom 0.
+    // Rider overlays follow the coaster train->car->seat-pair model (mirrors VehiclePaint.cpp's
+    // PaintVehicleRiders): the ride is ONE train of M gondola cars (RiderFrameStride), each car
+    // holding R = num_seats/2 seat-pair ROWS. gondola g is a CABIN - walk next_vehicle_on_train,
+    // g advances once per car - and within it each seat-pair row i draws its own rider sheet
+    // recoloured to that pair's two guests: the first seat via secondary remap, the second via
+    // tertiary (primary remap is unreachable from the -m closest Blender pipeline, an unused
+    // placeholder). Guests pick a RANDOM car, so a car may be occupied while a later one isn't;
+    // g still advances per cabin so a cabin's sprite slot stays physically fixed. Zoom 0 only.
     //
-    // The ride is ONE train of M gondola cars (object_json's num_gondola_cars), so walk
-    // next_vehicle_on_train and draw gondola g from car c's OWN peep[]/shirt colours. A
-    // unified gondola->(car, seat-pair) index keeps both layouts working: M==1 (one car
-    // holding K gondola-pairs in its peep[]) and M>1 (one pair per car). Guests pick a
-    // RANDOM car (existing coaster-style boarding), so a car may be occupied while a later
-    // one isn't — advance to the next car rather than breaking globally.
+    // Atlas layout (each block = numDirs x FramesPerDir):
+    //   SharedRiderSheet: [structure][row0 sheet][row1 sheet]... - R sheets shared by EVERY
+    //     cabin; row i is block (1+i), phase-offset by g*RiderPhaseStride so it lands where the
+    //     structure draws cabin g. Collapses M*R rider sheets down to R (Ferris/Enterprise).
+    //   otherwise: [structure][g0 row0][g0 row1]...[g1 row0]... - each gondola owns R contiguous
+    //     blocks; gondola g row i is block (1 + g*R + i).
+    // For a 1-pair ride (R==1) both formulas collapse to the legacy (1+g) block and the recolour
+    // seats to [0],[1], so every existing ride stays byte-identical.
     if (vehicle != nullptr && desc.RiderFrameStride > 0 && session.rt.zoom_level <= ZoomLevel{ 0 })
     {
         const uint32_t structureBlockSize = numDirs * desc.FramesPerDir;
         const uint8_t numGondolas = desc.RiderFrameStride;
         uint8_t g = 0;
         for (Vehicle* car = vehicle; car != nullptr && g < numGondolas;
-             car = getGameState().entities.GetEntity<Vehicle>(car->next_vehicle_on_train))
+             car = getGameState().entities.GetEntity<Vehicle>(car->next_vehicle_on_train), g++)
         {
             const uint8_t seatsInCar = car->num_seats & kVehicleSeatNumMask;
-            for (uint8_t s = 0; s + 1 < seatsInCar && g < numGondolas; s += 2, g++)
+            const uint8_t rows = seatsInCar / 2; // seat-pair rows this gondola holds
+            for (uint8_t i = 0; i < rows; i++)
             {
-                // g is the gondola's fixed PHYSICAL slot (sprite index). Skip an empty pair's
-                // draw but still advance g, so an unoccupied car leaves its slot empty rather
-                // than packing later cars' riders into the low gondola indices (which made
-                // random boarding re-display as a clockwise fill). Seats fill in order within a
-                // car, so s >= num_peeps means this pair is empty.
-                if (s >= car->num_peeps)
+                // Seats fill in order within a car, so seat >= num_peeps means this pair is empty.
+                const uint8_t seat = i * 2;
+                if (seat >= car->num_peeps)
                     continue;
-                // SharedRiderSheet: all gondolas draw from ONE rider block (right after the
-                // structure), each phase-offset by g * RiderPhaseStride so cabin g's rider lines up
-                // with where the structure draws cabin g. Otherwise each gondola has its own block.
                 uint32_t riderIdx;
                 if (desc.SharedRiderSheet && desc.FramesPerDir > 0)
                 {
-                    const uint16_t phaseFrame = (animFrame + g * desc.RiderPhaseStride) % desc.FramesPerDir;
-                    riderIdx = baseImageId + structureBlockSize + spriteDirection * desc.FramesPerDir + phaseFrame;
+                    // The shared sheet's ROTATION cycle is RiderPhaseStride*M frames (one even
+                    // cabin-spacing per gondola) = rotation_frames, which is SHORTER than
+                    // FramesPerDir when the sheet appends a door/load sub-animation (e.g. the
+                    // Kiddie wheel: 360 rotation frames in a 400-frame sheet). Wrap the phase on
+                    // that cycle, NOT FramesPerDir - otherwise a phase-shifted cabin (g>=1) whose
+                    // animFrame+g*stride lands in the trailing door frames samples the load pose
+                    // and its riders FREEZE there mid-spin, floating a spacing behind the cabin.
+                    // (stride*M == rotation_frames exactly: a shared sheet only works when the
+                    // cabins divide the rotation evenly.) Falls back to FramesPerDir for a
+                    // door-less sheet, where the two are equal (byte-identical).
+                    const uint16_t riderCycle = (desc.RiderPhaseStride > 0 && desc.RiderFrameStride > 0)
+                        ? static_cast<uint16_t>(desc.RiderPhaseStride * desc.RiderFrameStride)
+                        : desc.FramesPerDir;
+                    const uint16_t phaseFrame
+                        = static_cast<uint16_t>((animFrame + g * desc.RiderPhaseStride) % riderCycle);
+                    riderIdx = baseImageId + static_cast<uint32_t>(1 + i) * structureBlockSize
+                        + spriteDirection * desc.FramesPerDir + phaseFrame;
                 }
                 else
                 {
-                    riderIdx = baseImageId + static_cast<uint32_t>(g + 1) * structureBlockSize
+                    riderIdx = baseImageId + static_cast<uint32_t>(1 + g * rows + i) * structureBlockSize
                         + spriteDirection * desc.FramesPerDir + animFrame;
                 }
                 ImageId riderId;
                 if (stationColour != TrackStationColour)
                     riderId = stationColour.WithIndex(riderIdx);
                 else
-                    riderId = ImageId(0, Drawing::Colour::black, car->peep_tshirt_colours[s],
-                                       car->peep_tshirt_colours[s + 1])
+                    riderId = ImageId(0, Drawing::Colour::black, car->peep_tshirt_colours[seat],
+                                       car->peep_tshirt_colours[seat + 1])
                                   .WithIndex(riderIdx);
                 PaintAddImageAsChild(session, riderId, offset, bb);
             }

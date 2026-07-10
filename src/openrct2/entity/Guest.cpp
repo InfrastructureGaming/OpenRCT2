@@ -2626,6 +2626,30 @@ namespace OpenRCT2
         int32_t i = 0;
 
         auto vehicle_id = ride.vehicles[chosen_train];
+
+        // Rotate-to-load: gate boarding to the cabins currently in the loading platform. The
+        // wheel holds at window w = headFrame / (PlatformCabins * RiderPhaseStride); that
+        // window's cabins are [w*P, w*P+P) in car order. Provisional index mapping — confirm
+        // in-game with riders. When RotateToLoad is off, the window spans every car (no gate).
+        const auto& flatDesc = GetFlatRideDescriptor(ride);
+        uint16_t rtlWindowFirst = 0, rtlWindowLast = 0xFFFF; // inclusive allowed car-index range
+        if (flatDesc.RotateToLoad && flatDesc.PlatformCabins > 0 && flatDesc.RiderPhaseStride > 0)
+        {
+            const Vehicle* head = getGameState().entities.GetEntity<Vehicle>(vehicle_id);
+            if (head != nullptr)
+            {
+                uint8_t numWindows = flatDesc.RiderFrameStride / flatDesc.PlatformCabins;
+                if (numWindows == 0)
+                    numWindows = 1;
+                const uint16_t rotationPerBatch = static_cast<uint16_t>(flatDesc.PlatformCabins)
+                    * flatDesc.RiderPhaseStride;
+                const uint8_t window = static_cast<uint8_t>(
+                    (head->flatRideAnimationFrame / rotationPerBatch) % numWindows);
+                rtlWindowFirst = static_cast<uint16_t>(window * flatDesc.PlatformCabins);
+                rtlWindowLast = static_cast<uint16_t>(rtlWindowFirst + flatDesc.PlatformCabins - 1);
+            }
+        }
+
         for (Vehicle* vehicle = getGameState().entities.GetEntity<Vehicle>(vehicle_id); vehicle != nullptr;
              vehicle = getGameState().entities.GetEntity<Vehicle>(vehicle->next_vehicle_on_train), ++i)
         {
@@ -2649,6 +2673,11 @@ namespace OpenRCT2
                 if (!vehicle->peep[position].IsNull())
                     continue;
             }
+
+            // Rotate-to-load window gate: skip cabins not currently in the platform.
+            if (static_cast<uint16_t>(i) < rtlWindowFirst || static_cast<uint16_t>(i) > rtlWindowLast)
+                continue;
+
             car_array.push_back(i);
         }
 

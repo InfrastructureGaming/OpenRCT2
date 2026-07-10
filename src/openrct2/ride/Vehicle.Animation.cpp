@@ -29,16 +29,6 @@
 
 using namespace OpenRCT2;
 using namespace OpenRCT2::Audio;
-
-// Mirrors GetFlatRideDescriptor in GenericFlatRide.cpp — prefers the parkobj-parsed
-// descriptor (RideObjectEntry::flatRideAnimation) over the compiled RTD when available.
-static const FlatRideRotationDescriptor& GetFlatRideDescriptor(const Ride& ride)
-{
-    const auto* entry = GetRideEntryByIndex(ride.subtype);
-    if (entry != nullptr && entry->flatRideAnimation != nullptr)
-        return *entry->flatRideAnimation;
-    return GetRideTypeDescriptor(ride.type).FlatRideRotation;
-}
 using namespace OpenRCT2::TrackMetadata;
 
 constexpr int16_t kVehicleMaxSpinSpeed = 1536;

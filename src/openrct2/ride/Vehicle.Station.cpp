@@ -512,6 +512,10 @@ void Vehicle::TrainReadyToDepart(uint8_t num_peeps_on_train, uint8_t num_used_se
  *
  *  rct2: 0x006D7DA1
  */
+// Rotate-to-load: how many ticks a loading window is held (guests board its cabins) before
+// the wheel rotates to bring the next batch into the platform. SPIKE value — tune in-game.
+static constexpr uint16_t kRotateToLoadWindowDwell = 96;
+
 void Vehicle::UpdateWaitingForPassengers()
 {
     velocity = 0;
@@ -546,6 +550,12 @@ void Vehicle::UpdateWaitingForPassengers()
         sub_state = 1;
         time_waiting = 0;
 
+        // Rotate-to-load rides start every loading cycle at window 0 (frame 0 = home / door
+        // pose). NB: a spin can end at an arbitrary frame, so this currently snaps home; a
+        // proper "arriving -> rotate to the unload pose" cadence is the follow-up.
+        if (GetFlatRideDescriptor(*curRide).RotateToLoad)
+            flatRideAnimationFrame = 0;
+
         invalidate();
         return;
     }
@@ -568,6 +578,57 @@ void Vehicle::UpdateWaitingForPassengers()
         }
 
         num_seats_on_train &= 0x7F;
+
+        // --- Rotate-to-load loading cadence (SPIKE) --------------------------------------
+        // Walk the wheel through its M/P loading windows on a single MONOTONIC clock:
+        // time_waiting (0 when the train claims the station, +1 per update). Each window is
+        // held kRotateToLoadWindowDwell ticks for boarding (guests are gated to its cabins in
+        // FindVehicleToEnter), then the wheel rotates one batch (rotationPerBatch frames, 1
+        // per tick) to present the next. After the last window the sweep is COMPLETE and we
+        // fall through to the normal close-restraints/dispatch below. Because the clock only
+        // moves forward, "sweep complete" can never be re-entered - the earlier version
+        // derived the window from flatRideAnimationFrame, so it mistook the home frame for
+        // "window 0" and rotated forever (guests boarded but never departed). Time-driven for
+        // now; event-based "rotate the instant a window fills" is the next layer.
+        {
+            const auto& flatDesc = GetFlatRideDescriptor(*curRide);
+            if (flatDesc.RotateToLoad && flatDesc.PlatformCabins > 0 && flatDesc.RiderPhaseStride > 0)
+            {
+                uint8_t numWindows = flatDesc.RiderFrameStride / flatDesc.PlatformCabins;
+                if (numWindows == 0)
+                    numWindows = 1;
+                const uint16_t rotationPerBatch = static_cast<uint16_t>(flatDesc.PlatformCabins)
+                    * flatDesc.RiderPhaseStride;
+                const uint16_t circle = static_cast<uint16_t>(rotationPerBatch * numWindows);
+                const uint16_t perWindow = static_cast<uint16_t>(kRotateToLoadWindowDwell + rotationPerBatch);
+                const uint32_t totalLoading = static_cast<uint32_t>(perWindow) * numWindows;
+
+                if (time_waiting < totalLoading)
+                {
+                    // Which window are we serving, and are we dwelling on it or rotating past it?
+                    const uint16_t windowIndex = static_cast<uint16_t>(time_waiting / perWindow);
+                    const uint16_t phase = static_cast<uint16_t>(time_waiting % perWindow);
+                    uint16_t frame = static_cast<uint16_t>(windowIndex * rotationPerBatch);
+                    if (phase >= kRotateToLoadWindowDwell)
+                        frame = static_cast<uint16_t>((frame + (phase - kRotateToLoadWindowDwell)) % circle);
+                    if (frame != flatRideAnimationFrame)
+                    {
+                        flatRideAnimationFrame = frame;
+                        invalidate();
+                    }
+                    return; // still loading - hold in waitingForPassengers, boarding gated per window
+                }
+
+                // Sweep complete: home the wheel, then fall through to normal dispatch. The
+                // monotonic clock stays past totalLoading, so we never rotate again while the
+                // restraints close / the ride waits for its load target.
+                if (flatRideAnimationFrame != 0)
+                {
+                    flatRideAnimationFrame = 0;
+                    invalidate();
+                }
+            }
+        }
 
         if (curRide->supportsStatus(RideStatus::testing))
         {
