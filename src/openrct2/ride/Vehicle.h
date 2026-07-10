@@ -93,6 +93,13 @@ enum class VehicleFlag : uint8_t
     moveSingleCar,
     crashed,       // Car displays as smoke plume
     carIsReversed, // Car is displayed running backwards
+    // Rotate-to-load flat rides only: set the first time a cabin is presented to the loading
+    // platform during a loading sweep, once its ride-cycle riders have been told to disembark.
+    // Reset for every cabin when the train claims the station (UpdateWaitingForPassengers
+    // sub_state 0). Lets the interleaved (Ferris-wheel) disembark fire exactly once per cabin so
+    // guests who board afterwards are never mistaken for old riders and ejected again. Occupies a
+    // previously-unused flag bit, so it defaults to 0 (unset) in every existing save.
+    rotateLoadUnloaded,
 };
 using VehicleFlags = FlagHolder<uint32_t, VehicleFlag>;
 

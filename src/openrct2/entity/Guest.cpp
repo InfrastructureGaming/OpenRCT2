@@ -2627,32 +2627,59 @@ namespace OpenRCT2
 
         auto vehicle_id = ride.vehicles[chosen_train];
 
-        // Rotate-to-load: gate boarding to the cabins currently in the loading platform. The
-        // wheel holds at window w = headFrame / (PlatformCabins * RiderPhaseStride); that
-        // window's cabins are [w*P, w*P+P) in car order. Provisional index mapping — confirm
-        // in-game with riders. When RotateToLoad is off, the window spans every car (no gate).
+        // Rotate-to-load: gate boarding to the cabins physically in the loading platform right
+        // now. The paint draws cabin g (0-indexed from the head) at sampled frame
+        // (headFrame + g*stride) % cycle; the platform holds the P cabins whose sampled pose lands
+        // in the loading zone [0, P*stride) (frame 0 == the home / door / load pose the render was
+        // authored around, stride == one cabin spacing). Deriving membership straight from the
+        // frame with the paint's OWN phase convention keeps the boarding cabins locked to the ones
+        // visually at the bottom at every window: a linear [w*P, w*P+P) car-INDEX range only lined
+        // up for window 0, because each batch rotates the wheel P cabin-spacings, so the bottom
+        // cabin advances by P *positions*, not P indices (0 -> M-P -> M-2P ...), which is why the
+        // loaded pair looked random. When RotateToLoad is off, rtlActive stays false (no gate).
         const auto& flatDesc = GetFlatRideDescriptor(ride);
-        uint16_t rtlWindowFirst = 0, rtlWindowLast = 0xFFFF; // inclusive allowed car-index range
-        if (flatDesc.RotateToLoad && flatDesc.PlatformCabins > 0 && flatDesc.RiderPhaseStride > 0)
+        bool rtlActive = false;
+        uint16_t rtlHeadFrame = 0, rtlStride = 0, rtlCycle = 0, rtlPlatformSpan = 0;
+        if (flatDesc.RotateToLoad && flatDesc.PlatformCabins > 0 && flatDesc.RiderPhaseStride > 0
+            && flatDesc.RiderFrameStride > 0)
         {
             const Vehicle* head = getGameState().entities.GetEntity<Vehicle>(vehicle_id);
             if (head != nullptr)
             {
-                uint8_t numWindows = flatDesc.RiderFrameStride / flatDesc.PlatformCabins;
-                if (numWindows == 0)
-                    numWindows = 1;
-                const uint16_t rotationPerBatch = static_cast<uint16_t>(flatDesc.PlatformCabins)
-                    * flatDesc.RiderPhaseStride;
-                const uint8_t window = static_cast<uint8_t>(
-                    (head->flatRideAnimationFrame / rotationPerBatch) % numWindows);
-                rtlWindowFirst = static_cast<uint16_t>(window * flatDesc.PlatformCabins);
-                rtlWindowLast = static_cast<uint16_t>(rtlWindowFirst + flatDesc.PlatformCabins - 1);
+                rtlActive = true;
+                rtlHeadFrame = head->flatRideAnimationFrame;
+                rtlStride = flatDesc.RiderPhaseStride;
+                // Full rotation period = M cabins * one spacing (== rotation_frames); door frames
+                // beyond it never occur during loading (the wheel rests at multiples of the batch).
+                rtlCycle = static_cast<uint16_t>(flatDesc.RiderPhaseStride * flatDesc.RiderFrameStride);
+                rtlPlatformSpan = static_cast<uint16_t>(flatDesc.PlatformCabins * flatDesc.RiderPhaseStride);
             }
         }
 
         for (Vehicle* vehicle = getGameState().entities.GetEntity<Vehicle>(vehicle_id); vehicle != nullptr;
              vehicle = getGameState().entities.GetEntity<Vehicle>(vehicle->next_vehicle_on_train), ++i)
         {
+            // Rotate-to-load platform gate — checked FIRST, before the used-in-pairs fast-path
+            // below, so a half-filled seat pair in an OFF-platform cabin can't yank a guest out of
+            // the loading zone (that path returns its car index unconditionally otherwise).
+            if (rtlActive)
+            {
+                const uint16_t sampled = static_cast<uint16_t>(
+                    (rtlHeadFrame + static_cast<uint32_t>(i) * rtlStride) % rtlCycle);
+                if (sampled >= rtlPlatformSpan)
+                    continue; // this cabin is not in the platform at the current rotation
+
+                // ...and it must have finished dropping its previous riders. Interleaved load/
+                // unload reopens a cabin's seats (next_free_seat = 0) the instant its window
+                // reaches the platform, while the ride-cycle riders are still climbing out; those
+                // leaving riders are still counted in num_peeps, so num_peeps > next_free_seat
+                // marks a cabin mid-disembark. Boarding it now would drop a new guest into a seat
+                // an old rider has not yet vacated, so wait until it is empty (num_peeps falls to
+                // next_free_seat) before offering it.
+                if (vehicle->num_peeps > vehicle->next_free_seat)
+                    continue;
+            }
+
             uint8_t num_seats = vehicle->num_seats;
             if (vehicle->IsUsedInPairs())
             {
@@ -2673,10 +2700,6 @@ namespace OpenRCT2
                 if (!vehicle->peep[position].IsNull())
                     continue;
             }
-
-            // Rotate-to-load window gate: skip cabins not currently in the platform.
-            if (static_cast<uint16_t>(i) < rtlWindowFirst || static_cast<uint16_t>(i) > rtlWindowLast)
-                continue;
 
             car_array.push_back(i);
         }
