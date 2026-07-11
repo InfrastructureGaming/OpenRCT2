@@ -311,6 +311,29 @@ namespace OpenRCT2
             RideAudio::StopAllChannels();
         }
 
+        // A custom-ride parkobj (registered by CustomRideLoader from custom_rides/) is ALWAYS
+        // provided locally on this install, so - exactly like an official object - it must NOT be
+        // packed into a park save. Packing it made the engine re-extract it into the user object
+        // dir on every subsequent load of that park (ID-named, with a -02 dedup suffix), bloating
+        // the object repository and spamming "Unknown ride type" when the standard object index
+        // rescanned those copies (they carry a custom ride type the base index can't resolve
+        // outside CustomRideLoader). Identify one by matching the repository item's identifier
+        // against the CustomParkObjId of every registered custom ride type - the same registry
+        // ObjectManager already walks to pre-load custom parkobjs in ResetTypeToRideEntryIndexMap.
+        bool IsCustomRideParkObject(const ObjectRepositoryItem* item) const
+        {
+            auto& registry = GetRideTypeRegistry();
+            for (uint32_t ci = RIDE_TYPE_COUNT; ci < registry.Count(); ci++)
+            {
+                const auto& rtd = registry.Get(ci);
+                if (rtd.CustomParkObjId != nullptr && item->Identifier == rtd.CustomParkObjId)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         std::vector<const ObjectRepositoryItem*> GetPackableObjects() override
         {
             std::vector<const ObjectRepositoryItem*> objects;
@@ -318,7 +341,10 @@ namespace OpenRCT2
             for (size_t i = 0; i < numObjects; i++)
             {
                 const ObjectRepositoryItem* item = &_objectRepository.GetObjects()[i];
-                if (item->LoadedObject != nullptr && IsObjectCustom(item))
+                // Custom-ride parkobjs are locally provided by CustomRideLoader; excluding them from
+                // the pack list keeps them out of the save so the engine never re-extracts them into
+                // the user object dir (the DB-bloat + "Unknown ride type" loop). See IsCustomRideParkObject.
+                if (item->LoadedObject != nullptr && IsObjectCustom(item) && !IsCustomRideParkObject(item))
                 {
                     objects.push_back(item);
                 }
