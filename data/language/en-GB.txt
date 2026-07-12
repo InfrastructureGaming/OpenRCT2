@@ -3843,3 +3843,5 @@ STR_7107    :Base size 7 × 7
 STR_7108    :Base size 8 × 8
 STR_7111    :Custom Flat Ride
 STR_7112    :A modder-defined spinning flat ride with animation defined in a parkobj.
+STR_7130    :Missing custom rides
+STR_7131    :This park uses custom rides that aren't installed, so they were left out: {STRING}. Install them in your custom_rides folder and reload the park to restore them.

@@ -1771,6 +1771,12 @@ enum : StringId
 
     STR_CHEAT_DISABLE_GRASS_GROWING = 7031,
 
+    // Custom-ride distribution: shown when a loaded park references custom rides not installed here.
+    // IDs 7130/7131 deliberately skip the 7113-7121 range reserved on the guest-logic branch (this
+    // branch flows one-way INTO that one, so overlapping IDs would collide on merge).
+    STR_MISSING_CUSTOM_RIDES_TITLE = 7130,
+    STR_MISSING_CUSTOM_RIDES_MESSAGE = 7131,
+
     // Have to include resource strings (from scenarios and objects) for the time being now that language is partially working
     /* MAX_STR_COUNT = 32768 */ // MAX_STR_COUNT - upper limit for number of strings, not the current count strings
 };

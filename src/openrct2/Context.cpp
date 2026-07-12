@@ -871,6 +871,27 @@ namespace OpenRCT2
                     windowManager->ShowError(STR_PARK_USES_FALLBACK_IMAGES_WARNING, kStringIdEmpty, Formatter());
                 }
 
+                // If the park referenced custom rides that aren't installed on this machine, those rides
+                // were dropped on load. Tell the user which ones, by their custom_rides folder name, so
+                // they can install them and reload rather than being left with silent holes in the park.
+                // Independent of the warnings above (a park can both use fallback images and miss rides).
+                auto missingCustomRides = parkImporter->GetMissingCustomRideTypes();
+                if (!missingCustomRides.empty())
+                {
+                    std::string names;
+                    for (size_t i = 0; i < missingCustomRides.size(); i++)
+                    {
+                        if (i != 0)
+                            names += ", ";
+                        names += missingCustomRides[i];
+                    }
+                    Console::Error::WriteLine("Park references custom rides that are not installed: %s", names.c_str());
+                    auto windowManager = _uiContext->GetWindowManager();
+                    auto ft = Formatter();
+                    ft.Add<const char*>(names.c_str());
+                    windowManager->ShowError(STR_MISSING_CUSTOM_RIDES_TITLE, STR_MISSING_CUSTOM_RIDES_MESSAGE, ft);
+                }
+
                 CloseProgress();
                 return true;
             }
