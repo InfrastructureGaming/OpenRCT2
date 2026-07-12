@@ -243,6 +243,14 @@ namespace OpenRCT2::Config
         // for ages") and eventually giving up. 1.0 = vanilla; higher = more patient, for the longer
         // ride durations that realistic-scale custom rides run.
         float queueToleranceMultiplier;
+
+        // When choosing their next ride, guests normally pick the single most exciting one they can
+        // reach, park-wide - so a distant coaster beats every nearby gentle ride. This discounts a
+        // ride's excitement by how far the guest would have to travel to it (rating-hundredths lost
+        // per tile of Manhattan distance). 0.0 = vanilla (pure max-excitement); higher lets a nearby
+        // flat ride out-score a far-off coaster, spreading guests across the park and cutting the
+        // long treks that strand guests mid-journey.
+        float rideChoiceDistanceWeight;
     };
 
     struct Config

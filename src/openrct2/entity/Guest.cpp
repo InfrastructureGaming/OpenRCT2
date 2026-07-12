@@ -1942,9 +1942,16 @@ namespace OpenRCT2
 
     static Ride* GuestFindBestRideToGoOn(Guest& guest)
     {
-        // Pick the most exciting ride
+        // Pick the ride with the highest DESIRABILITY score. Vanilla scores purely on excitement, so
+        // the single most exciting ride in the park always wins - a distant coaster beats every nearby
+        // gentle ride. The optional ride-choice distance weighting (Options > Guest Logic) discounts a
+        // ride's excitement by how far the guest would have to walk to it, so a nearby flat ride can
+        // out-score a far-off coaster. At weight 0 the penalty is skipped entirely and this reduces to
+        // the vanilla max-excitement pick (identical selection and tie-breaking).
         auto rideConsideration = GuestFindRidesToGoOn(guest);
-        Ride* mostExcitingRide = nullptr;
+        Ride* bestRide = nullptr;
+        float bestScore = 0.0f;
+        const float distanceWeight = Config::Get().guestLogic.rideChoiceDistanceWeight;
 
         auto& gameState = getGameState();
         for (auto& ride : RideManager(gameState))
@@ -1960,15 +1967,29 @@ namespace OpenRCT2
                 {
                     if (guest.shouldGoOnRide(ride, StationIndex::FromUnderlying(0), false, true) && RideHasRatings(ride))
                     {
-                        if (mostExcitingRide == nullptr || ride.ratings.excitement > mostExcitingRide->ratings.excitement)
+                        // Score is in rating-hundredths (excitement is fixed16_2dp); the distance
+                        // penalty is expressed in the same units per tile so the two are comparable.
+                        float score = static_cast<float>(ride.ratings.excitement);
+                        if (distanceWeight > 0.0f)
                         {
-                            mostExcitingRide = &ride;
+                            const auto rideLoc = ride.getStation().Start;
+                            if (!rideLoc.IsNull())
+                            {
+                                const int32_t tiles = (abs(guest.x - rideLoc.x) + abs(guest.y - rideLoc.y))
+                                    / kCoordsXYStep;
+                                score -= distanceWeight * static_cast<float>(tiles);
+                            }
+                        }
+                        if (bestRide == nullptr || score > bestScore)
+                        {
+                            bestRide = &ride;
+                            bestScore = score;
                         }
                     }
                 }
             }
         }
-        return mostExcitingRide;
+        return bestRide;
     }
 
     /**

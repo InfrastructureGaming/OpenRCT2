@@ -3846,3 +3846,5 @@ STR_7112    :A modder-defined spinning flat ride with animation defined in a par
 STR_7113    :Guest Logic
 STR_7114    :Queue patience
 STR_7115    :How long guests will wait in a queue before complaining and leaving. Higher values suit longer, realistic-scale rides. 1.00 = default game behaviour.
+STR_7116    :Ride distance weighting
+STR_7117    :How strongly guests prefer nearby rides when choosing where to go next. Higher values stop guests trekking across the park to a distant coaster, so nearby rides of all kinds get fairer consideration. 0.00 = default game behaviour (always the most exciting ride, however far).
