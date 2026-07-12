@@ -12,7 +12,6 @@
 #include "Cheats.h"
 #include "Context.h"
 #include "Diagnostic.h"
-#include "Editor.h"
 #include "FileClassifier.h"
 #include "GameState.h"
 #include "GameStateSnapshots.h"
@@ -29,6 +28,7 @@
 #include "core/Console.hpp"
 #include "core/File.h"
 #include "core/FileScanner.h"
+#include "core/FileSystem.hpp"
 #include "core/Money.hpp"
 #include "core/Path.hpp"
 #include "core/String.hpp"
@@ -59,6 +59,7 @@
 #include "ride/Vehicle.h"
 #include "sawyer_coding/SawyerCoding.h"
 #include "scenario/Scenario.h"
+#include "scenes/SceneManager.h"
 #include "scenes/title/TitleScene.h"
 #include "scripting/ScriptEngine.h"
 #include "ui/UiContext.h"
@@ -361,7 +362,10 @@ void GameLoadInit()
     IGameStateSnapshots* snapshots = context->GetGameStateSnapshots();
     snapshots->Reset();
 
-    context->SetActiveScene(context->GetGameScene());
+    // TODO: move this to caller sites??
+    auto* sceneMgr = context->GetSceneManager();
+    if (sceneMgr->getActiveScene() != sceneMgr->getScenarioEditorScene()) // HACK
+        sceneMgr->setActiveScene(sceneMgr->getGameScene());
 
     // Invalidate scrolling text cache to prevent stale text from previous park
     // being displayed due to pointer value reuse in the cache matching logic
@@ -492,9 +496,23 @@ void SaveGameCmd(u8string_view name /* = {} */)
     }
     else
     {
+        if (!Platform::IsFilenameValid(name))
+        {
+            LOG_ERROR("Cannot save game: filename contains invalid characters.");
+            return;
+        }
+
         auto& env = GetContext()->GetPlatformEnvironment();
-        auto savePath = Path::Combine(env.GetDirectoryPath(DirBase::user, DirId::saves), u8string(name) + u8".park");
-        SaveGameWithName(savePath);
+        auto savesDir = fs::canonical(env.GetDirectoryPath(DirBase::user, DirId::saves));
+        auto savePath = savesDir / fs::u8path(u8string(name) + u8".park");
+
+        if (!fs::weakly_canonical(savePath).u8string().starts_with(savesDir.u8string()))
+        {
+            LOG_ERROR("Save filename must resolve to a path inside the saves directory.");
+            return;
+        }
+
+        SaveGameWithName(savePath.u8string());
     }
 }
 
@@ -724,8 +742,8 @@ void GameLoadOrQuitNoSavePrompt()
             EmscriptenResetAutosave();
 #endif
 
-            auto* context = GetContext();
-            context->SetActiveScene(context->GetTitleScene());
+            auto* sceneMgr = GetContext()->GetSceneManager();
+            sceneMgr->setActiveScene(sceneMgr->getTitleScene());
             break;
         }
         case PromptMode::saveBeforeNewGame:

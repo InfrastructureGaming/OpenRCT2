@@ -984,12 +984,13 @@ void FASTCALL GfxDrawSpriteRawMaskedSoftware(
         return;
     }
 
-    // Both images must carry the hasTransparency flag for the full flat-pixel masking path below.
-    // If either image is in RLE/wideRLE format (no hasTransparency), fall back to an unmasked
-    // draw — but clamp to the mask's bounding box so large sprites such as flat-ride animation
-    // frames used as ride-picker thumbnails don't overflow adjacent scroll cells. This gives the
-    // same footprint as proper masking and matches OpenGL's DrawSpriteRawMasked behaviour.
-    if (!imgMask->flags.has(G1Flag::hasTransparency) || !imgColour->flags.has(G1Flag::hasTransparency))
+    // Masking only works with non-RLE bitmap images. If either image is in RLE/wideRLE format,
+    // fall back to an unmasked draw — but clamp to the mask's bounding box so large sprites such as
+    // flat-ride animation frames used as ride-picker thumbnails don't overflow adjacent scroll
+    // cells. This gives the same footprint as proper masking and matches OpenGL's
+    // DrawSpriteRawMasked behaviour. (Upstream narrowed this guard from !hasTransparency to
+    // hasRLECompression; kept, with our clamped fallback body below.)
+    if (imgMask->flags.has(G1Flag::hasRLECompression) || imgColour->flags.has(G1Flag::hasRLECompression))
     {
         ScreenCoordsXY maskOrigin = scrCoords + ScreenCoordsXY{ imgMask->xOffset, imgMask->yOffset };
         int32_t clipLeft   = std::max<int32_t>(rt.x, maskOrigin.x);
@@ -1163,7 +1164,7 @@ void GfxSetG1Element(ImageIndex imageId, const G1Element* g1)
     bool isValid = (imageId >= SPR_IMAGE_LIST_BEGIN && imageId < SPR_IMAGE_LIST_END)
         || (imageId >= SPR_SCROLLING_TEXT_START && imageId < SPR_SCROLLING_TEXT_END);
 
-#ifdef DEBUG
+#if DEBUG > 0
     Guard::Assert(!gOpenRCT2NoGraphics, "GfxSetG1Element called on headless instance");
     Guard::Assert(isValid || isTemp, "GfxSetG1Element called with unexpected image id");
     Guard::Assert(g1 != nullptr, "g1 was nullptr");

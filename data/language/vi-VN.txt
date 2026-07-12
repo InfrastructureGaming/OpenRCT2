@@ -270,7 +270,7 @@ STR_0892    :Ảnh chụp màn hình đã lưu vào đĩa dưới dạng ‘{STR
 STR_0893    :Ảnh chụp màn hình thất bại!
 STR_0894    :Vùng dữ liệu cảnh quan đầy!
 STR_0895    :Không thể xây dựng một phần trên và một phần dưới lòng đất
-STR_0896    :{STRINGID} Xây dựng
+STR_0896    :{STRING} Xây dựng
 STR_0897    :Hướng
 STR_0898    :Đường cong trái
 STR_0899    :Đường cong phải
@@ -3223,7 +3223,7 @@ STR_6271    :Các cạnh địa hình
 STR_6272    :Nhà ga
 STR_6273    :Âm nhạc
 STR_6274    :Không thể đặt bảng màu…
-STR_6275    :{WINDOW_COLOUR_2}Kiểu nhà ga:
+STR_6275    :Kiểu nhà ga
 STR_6276    :{RED}{STRINGID} có khách bị kẹt, có thể do loại trò chơi hoặc chế độ vận hành không hợp lệ.
 STR_6277    :Chỉ mục nhà ga: {BLACK}{STRINGID}
 STR_6278    :Số lượng tự động lưu

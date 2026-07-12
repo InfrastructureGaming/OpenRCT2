@@ -29,6 +29,9 @@ namespace OpenRCT2::Drawing
         if (meta.srcSize.height == 0)
             meta.srcSize.height = image.Height;
 
+        // NB: the upstream max-dimension cap (256, later 300) is intentionally REMOVED here — custom
+        // flat-ride sprites are far larger and rely on the wideRLE path below (isWide, >256px). Do
+        // not re-add it on future upstream merges without a much higher limit or it rejects our rides.
         if (meta.palette == Palette::KeepIndices && image.Depth != 8)
         {
             throw std::invalid_argument("Image is not paletted, it has bit depth of " + std::to_string(image.Depth));
@@ -41,10 +44,12 @@ namespace OpenRCT2::Drawing
                     : isRLE   ? EncodeRLE(pixels.data(), meta.srcSize)
                               : EncodeRaw(pixels.data(), meta.srcSize);
 
+        G1Flags flags = { G1Flag::hasTransparency };
+        flags.set(G1Flag::hasRLECompression, isRLE);
         G1Element outElement;
         outElement.width = meta.srcSize.width;
         outElement.height = meta.srcSize.height;
-        outElement.flags = { isRLE ? G1Flag::hasRLECompression : G1Flag::hasTransparency };
+        outElement.flags = flags;
         outElement.xOffset = meta.offset.x;
         outElement.yOffset = meta.offset.y;
         outElement.zoomedOffset = meta.zoomedOffset;
@@ -52,6 +57,8 @@ namespace OpenRCT2::Drawing
             outElement.flags.set(G1Flag::wideRLE);
         if (meta.importFlags.has(ImportFlag::noDrawOnZoom))
             outElement.flags.set(G1Flag::noZoomDraw);
+        if (meta.zoomedOffset != 0)
+            outElement.flags.set(G1Flag::hasZoomSprite);
 
         ImageImportResult result;
         result.Element = outElement;
@@ -246,13 +253,15 @@ namespace OpenRCT2::Drawing
                         currentCode->NumPixels = npixels;
                         currentCode->OffsetX = startX;
 
-                        if (x == size.width - 1)
+                        auto isLastPixel = x == size.width - 1;
+                        if (isLastPixel)
                         {
                             currentCode->NumPixels |= 0x80;
                         }
 
                         currentCode = reinterpret_cast<RLECode*>(dst);
-                        dst += 2;
+                        if (!isLastPixel)
+                            dst += 2;
                     }
                     else
                     {

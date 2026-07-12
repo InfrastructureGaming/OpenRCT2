@@ -12,7 +12,6 @@
 #include "../Cheats.h"
 #include "../Context.h"
 #include "../Diagnostic.h"
-#include "../Editor.h"
 #include "../GameState.h"
 #include "../Input.h"
 #include "../OpenRCT2.h"
@@ -505,7 +504,7 @@ bool RideTryGetOriginElement(const Ride& ride, CoordsXYE* output)
     TileElementIteratorBegin(&it);
     do
     {
-        if (it.element->getType() != TileElementType::Track)
+        if (it.element->getType() != TileElementType::track)
             continue;
         if (it.element->asTrack()->GetRideIndex() != ride.id)
             continue;
@@ -713,21 +712,21 @@ void Ride::updateAll()
     {
         switch (getGameState().editorStep)
         {
-            case EditorStep::objectSelection:
-            case EditorStep::landscapeEditor:
-            case EditorStep::inventionsListSetUp:
+            case Editor::Step::objectSelection:
+            case Editor::Step::landscapeEditor:
+            case Editor::Step::inventionsListSetUp:
             {
                 for (auto& ride : RideManager(gameState))
                     ride.remove();
                 break;
             }
-            case EditorStep::optionsSelection:
-            case EditorStep::objectiveSelection:
-            case EditorStep::scenarioDetails:
-            case EditorStep::saveScenario:
-            case EditorStep::rollerCoasterDesigner:
-            case EditorStep::designsManager:
-            case EditorStep::invalid:
+            case Editor::Step::optionsSelection:
+            case Editor::Step::objectiveSelection:
+            case Editor::Step::scenarioDetails:
+            case Editor::Step::saveScenario:
+            case Editor::Step::rollerCoasterDesigner:
+            case Editor::Step::designsManager:
+            case Editor::Step::invalid:
                 break;
         }
         return;
@@ -1968,7 +1967,7 @@ static bool RideTypeVehicleColourExists(ObjectEntryIndex subType, const VehicleC
     return false;
 }
 
-int32_t RideGetUnusedPresetVehicleColour(ObjectEntryIndex subType)
+int32_t RideGetUnusedPresetVehicleColour(ObjectEntryIndex subType, uint32_t randomValue)
 {
     const auto* rideEntry = GetRideEntryByIndex(subType);
     if (rideEntry == nullptr)
@@ -1994,10 +1993,10 @@ int32_t RideGetUnusedPresetVehicleColour(ObjectEntryIndex subType)
 
     // If all presets have been used, just go with a random preset
     if (unused.empty())
-        return UtilRand() % colourPresets->count;
+        return randomValue % colourPresets->count;
 
     // Choose a random preset from the list of unused presets
-    auto unusedIndex = UtilRand() % unused.size();
+    auto unusedIndex = randomValue % unused.size();
     return unused[unusedIndex];
 }
 
@@ -2119,7 +2118,7 @@ static void RideShopConnected(const Ride& ride)
     {
         if (tileElement == nullptr)
             break;
-        if (tileElement->getType() == TileElementType::Track && tileElement->asTrack()->GetRideIndex() == ride.id)
+        if (tileElement->getType() == TileElementType::track && tileElement->asTrack()->GetRideIndex() == ride.id)
         {
             trackElement = tileElement->asTrack();
             break;
@@ -2297,11 +2296,11 @@ static void RideEntranceSetMapTooltip(const EntranceElement& entranceElement)
 
 void RideSetMapTooltip(const TileElement& tileElement)
 {
-    if (tileElement.getType() == TileElementType::Entrance)
+    if (tileElement.getType() == TileElementType::entrance)
     {
         RideEntranceSetMapTooltip(*tileElement.asEntrance());
     }
-    else if (tileElement.getType() == TileElementType::Track)
+    else if (tileElement.getType() == TileElementType::track)
     {
         const auto* trackElement = tileElement.asTrack();
         if (trackElement->IsStation())
@@ -2313,7 +2312,7 @@ void RideSetMapTooltip(const TileElement& tileElement)
             RideTrackSetMapTooltip(*trackElement);
         }
     }
-    else if (tileElement.getType() == TileElementType::Path)
+    else if (tileElement.getType() == TileElementType::path)
     {
         RideQueueBannerSetMapTooltip(*tileElement.asPath());
     }
@@ -2458,7 +2457,7 @@ void Ride::chainQueues() const
         {
             do
             {
-                if (tileElement->getType() != TileElementType::Entrance)
+                if (tileElement->getType() != TileElementType::entrance)
                     continue;
                 if (tileElement->getBaseZ() != mapLocation.z)
                     continue;
@@ -2476,7 +2475,7 @@ void Ride::chainQueues() const
  */
 static ResultWithMessage RideCheckBlockBrakes(const CoordsXYE& input, CoordsXYE* output, bool shouldCheckCompleteCircuit)
 {
-    if (input.element == nullptr || input.element->getType() != TileElementType::Track)
+    if (input.element == nullptr || input.element->getType() != TileElementType::track)
         return { false };
 
     RideId rideIndex = input.element->asTrack()->GetRideIndex();
@@ -2810,7 +2809,7 @@ static void RideSetMazeEntranceExitPoints(Ride& ride)
         {
             if (tileElement == nullptr)
                 break;
-            if (tileElement->getType() != TileElementType::Entrance)
+            if (tileElement->getType() != TileElementType::entrance)
                 continue;
             if (tileElement->asEntrance()->GetEntranceType() != ENTRANCE_TYPE_RIDE_ENTRANCE
                 && tileElement->asEntrance()->GetEntranceType() != ENTRANCE_TYPE_RIDE_EXIT)
@@ -3793,7 +3792,7 @@ TrackElement* Ride::getOriginElement(StationIndex stationIndex) const
         return nullptr;
     do
     {
-        if (tileElement->getType() != TileElementType::Track)
+        if (tileElement->getType() != TileElementType::track)
             continue;
 
         auto* trackElement = tileElement->asTrack();
@@ -4402,7 +4401,7 @@ bool RideHasAnyTrackElements(const Ride& ride)
     TileElementIteratorBegin(&it);
     while (TileElementIteratorNext(&it))
     {
-        if (it.element->getType() != TileElementType::Track)
+        if (it.element->getType() != TileElementType::track)
             continue;
         if (it.element->asTrack()->GetRideIndex() != ride.id)
             continue;
@@ -4780,7 +4779,7 @@ static int32_t RideGetTrackLength(const Ride& ride)
             continue;
         do
         {
-            if (tileElement->getType() != TileElementType::Track)
+            if (tileElement->getType() != TileElementType::track)
                 continue;
 
             trackType = tileElement->asTrack()->GetTrackType();
@@ -5004,7 +5003,7 @@ void Ride::updateNumberOfCircuits()
 
 void Ride::setRideEntry(ObjectEntryIndex entryIndex)
 {
-    auto colour = RideGetUnusedPresetVehicleColour(entryIndex);
+    auto colour = RideGetUnusedPresetVehicleColour(entryIndex, UtilRand());
     auto rideSetVehicleAction = GameActions::RideSetVehicleAction(
         id, GameActions::RideSetVehicleType::rideEntry, entryIndex, colour);
     GameActions::Execute(&rideSetVehicleAction, getGameState());
@@ -5146,7 +5145,7 @@ TileElement* GetStationPlatform(const CoordsXYRangedZ& coords)
     {
         do
         {
-            if (tileElement->getType() != TileElementType::Track)
+            if (tileElement->getType() != TileElementType::track)
                 continue;
             /* Check if tileElement is a station platform. */
             if (!tileElement->asTrack()->IsStation())
@@ -5408,7 +5407,7 @@ void DetermineRideEntranceAndExitLocations()
                     {
                         do
                         {
-                            if (tileElement->getType() != TileElementType::Entrance)
+                            if (tileElement->getType() != TileElementType::entrance)
                             {
                                 continue;
                             }
@@ -5569,7 +5568,7 @@ void Ride::updateRideTypeForAllPieces()
 
             do
             {
-                if (tileElement->getType() != TileElementType::Track)
+                if (tileElement->getType() != TileElementType::track)
                     continue;
 
                 auto* trackElement = tileElement->asTrack();

@@ -14,7 +14,6 @@
 
 #include <algorithm>
 #include <openrct2/Context.h>
-#include <openrct2/Editor.h>
 #include <openrct2/Game.h>
 #include <openrct2/GameState.h>
 #include <openrct2/OpenRCT2.h>
@@ -522,8 +521,8 @@ namespace OpenRCT2::Ui::Windows
                 return;
 
             auto step = getGameState().editorStep;
-            bool isObjectiveSelection = step == EditorStep::objectiveSelection;
-            bool isScenarioDetails = step == EditorStep::scenarioDetails;
+            bool isObjectiveSelection = step == Editor::Step::objectiveSelection;
+            bool isScenarioDetails = step == Editor::Step::scenarioDetails;
             bool isOtherTab = !isObjectiveSelection && !isScenarioDetails;
 
             // Disable tabs based on current editor step

@@ -267,7 +267,7 @@ STR_0892    :Ruudunkaappaus tallennettu levylle nimellä ”{STRINGID}”
 STR_0893    :Ruudunkaappaus epäonnistui!
 STR_0894    :Maisematietoalue on täynnä!
 STR_0895    :Ei voi rakentaa osittain maan ylle ja alle
-STR_0896    :{STRINGID} rakennus
+STR_0896    :{STRING} rakennus
 STR_0897    :Suunta
 STR_0898    :Kaarre vasempaan
 STR_0899    :Kaarre oikeaan
@@ -3285,7 +3285,7 @@ STR_6271    :Maastoreunat
 STR_6272    :Asematyylit
 STR_6273    :Musiikki
 STR_6274    :Värimallia ei voi valita…
-STR_6275    :{WINDOW_COLOUR_2}Aseman tyyli:
+STR_6275    :Aseman tyyli
 STR_6276    :{RED}Kävijät juuttuvat kohteeseen {STRINGID}, mahdollisesti väärän laitetyypin tai toimintatilan johdosta.
 STR_6277    :Aseman numero: {BLACK}{STRINGID}
 STR_6278    :Tallennuksien määrä

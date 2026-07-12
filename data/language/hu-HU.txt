@@ -270,7 +270,7 @@ STR_0892    :A képernyő elmentve ’{STRINGID}’ néven
 STR_0893    :A képmentés sikertelen !
 STR_0894    :Táj-adatterület megtelt !
 STR_0895    :Nem lehet részben föld fölé, részben föld alá építeni!
-STR_0896    :{STRINGID} építése
+STR_0896    :{STRING} építése
 STR_0897    :Irány
 STR_0898    :Balkanyar
 STR_0899    :Jobbkanyar
@@ -3281,7 +3281,7 @@ STR_6271    :Terepszegélyek
 STR_6272    :Állomások
 STR_6273    :Zene
 STR_6274    :Nem állítható be színséma…
-STR_6275    :{WINDOW_COLOUR_2}Állomás stílusa:
+STR_6275    :Állomás stílusa
 STR_6276    :A vendégek beragadnak itt: {RED}{STRINGID}. Lehet, hogy érvénytelen játéktípus vagy működési mód okozza.
 STR_6277    :Állomás index: {BLACK}{STRINGID}
 STR_6278    :Automentések száma
@@ -3817,3 +3817,6 @@ STR_7025    :Tedd láthatóvá
 STR_7026    :Az egész játékot láthatóvá teszi
 STR_7028    :Negyed spirál felfelé
 STR_7029    :Negyed spirál lefelé
+STR_7030    :{WINDOW_COLOUR_2}Szórakoztatott vendégek: {BLACK}{COMMA32}
+STR_7031    :Fű növekedésének kikapcsolása
+STR_7032    :Fű öregedésének kikapcsolása, hogy ne növekedjen tovább.
