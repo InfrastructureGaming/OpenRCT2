@@ -3843,3 +3843,6 @@ STR_7107    :Base size 7 × 7
 STR_7108    :Base size 8 × 8
 STR_7111    :Custom Flat Ride
 STR_7112    :A modder-defined spinning flat ride with animation defined in a parkobj.
+STR_7113    :Guest Logic
+STR_7114    :Queue patience
+STR_7115    :How long guests will wait in a queue before complaining and leaving. Higher values suit longer, realistic-scale rides. 1.00 = default game behaviour.

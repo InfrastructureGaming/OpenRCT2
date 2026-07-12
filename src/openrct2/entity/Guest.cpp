@@ -2757,6 +2757,19 @@ namespace OpenRCT2
     }
 
     /**
+     * Scale a base queue-time threshold (in ticks) by the player's queue-tolerance multiplier
+     * (Options > Miscellaneous > Guest Logic; 1.0 = vanilla behaviour). Higher values make guests wait
+     * longer before they think "I've been queuing for ages" and before they give up, which suits the
+     * longer ride durations that realistic-scale custom rides run. Clamped to the uint16 range that
+     * timeInQueue itself lives in (it saturates at 0xFFFF), so an extreme multiplier can't wrap.
+     */
+    static uint16_t ScaleQueueTolerance(int32_t baseTicks)
+    {
+        const float mult = Config::Get().guestLogic.queueToleranceMultiplier;
+        return static_cast<uint16_t>(std::clamp(baseTicks * mult, 0.0f, 65535.0f));
+    }
+
+    /**
      * The satisfaction values calculated here are used to determine how happy the peep is with the ride,
      * and also affects the satisfaction stat of the ride itself. The factors that affect satisfaction include:
      * - The price of the ride compared to the ride's value
@@ -2772,11 +2785,11 @@ namespace OpenRCT2
         // Calculate satisfaction based on how long the peep has been in the queue for.
         // (For comparison: peeps start thinking "I've been queueing for a long time" at 3500 and
         // start leaving the queue at 4300.)
-        if (guest.timeInQueue >= 4500)
+        if (guest.timeInQueue >= ScaleQueueTolerance(4500))
             satisfaction -= 35;
-        else if (guest.timeInQueue >= 2250)
+        else if (guest.timeInQueue >= ScaleQueueTolerance(2250))
             satisfaction -= 10;
-        else if (guest.timeInQueue <= 750)
+        else if (guest.timeInQueue <= ScaleQueueTolerance(750))
             satisfaction += 10;
 
         // Peeps get a small boost in satisfaction if they've been on a ride of the same type before,
@@ -5822,7 +5835,7 @@ namespace OpenRCT2
             return;
         if (AnimationGroup == PeepAnimationGroup::normal)
         {
-            if (timeInQueue >= 2000 && (0xFFFF & ScenarioRand()) <= 119)
+            if (timeInQueue >= ScaleQueueTolerance(2000) && (0xFFFF & ScenarioRand()) <= 119)
             {
                 // Eat Food/Look at watch
                 Action = PeepActionType::eatFood;
@@ -5830,7 +5843,7 @@ namespace OpenRCT2
                 AnimationImageIdOffset = 0;
                 UpdateCurrentAnimationType();
             }
-            if (timeInQueue >= 3500 && (0xFFFF & ScenarioRand()) <= 93)
+            if (timeInQueue >= ScaleQueueTolerance(3500) && (0xFFFF & ScenarioRand()) <= 93)
             {
                 // Create the I have been waiting in line ages thought
                 insertNewThought(PeepThoughtType::queuingAges, CurrentRide);
@@ -5875,7 +5888,7 @@ namespace OpenRCT2
                 }
             }
         }
-        if (timeInQueue < 4300)
+        if (timeInQueue < ScaleQueueTolerance(4300))
             return;
 
         if (happiness <= 65 && (0xFFFF & ScenarioRand()) < 2184)

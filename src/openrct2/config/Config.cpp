@@ -650,6 +650,22 @@ namespace OpenRCT2::Config
         writer->WriteString("allowed_hosts", model->allowedHosts);
     }
 
+    static void ReadGuestLogic(IIniReader* reader)
+    {
+        if (reader->ReadSection("guest_logic"))
+        {
+            auto model = &_config.guestLogic;
+            model->queueToleranceMultiplier = reader->GetFloat("queue_tolerance_multiplier", 1.0f);
+        }
+    }
+
+    static void WriteGuestLogic(IIniWriter* writer)
+    {
+        auto model = &_config.guestLogic;
+        writer->WriteSection("guest_logic");
+        writer->WriteFloat("queue_tolerance_multiplier", model->queueToleranceMultiplier);
+    }
+
     bool SetDefaults()
     {
         try
@@ -662,6 +678,7 @@ namespace OpenRCT2::Config
             ReadNotifications(reader.get());
             ReadFont(reader.get());
             ReadPlugin(reader.get());
+            ReadGuestLogic(reader.get());
             return true;
         }
         catch (const std::exception&)
@@ -683,6 +700,7 @@ namespace OpenRCT2::Config
             ReadNotifications(reader.get());
             ReadFont(reader.get());
             ReadPlugin(reader.get());
+            ReadGuestLogic(reader.get());
             return true;
         }
         catch (const std::exception&)
@@ -707,6 +725,7 @@ namespace OpenRCT2::Config
             WriteNotifications(writer.get());
             WriteFont(writer.get());
             WritePlugin(writer.get());
+            WriteGuestLogic(writer.get());
             return true;
         }
         catch (const std::exception& ex)

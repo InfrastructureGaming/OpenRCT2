@@ -233,6 +233,11 @@ namespace OpenRCT2::Ui::Windows
         WIDX_DEFAULT_INSPECTION_INTERVAL_LABEL,
         WIDX_DEFAULT_INSPECTION_INTERVAL,
         WIDX_DEFAULT_INSPECTION_INTERVAL_DROPDOWN,
+        WIDX_GUEST_LOGIC_GROUP,
+        WIDX_QUEUE_TOLERANCE_LABEL,
+        WIDX_QUEUE_TOLERANCE,
+        WIDX_QUEUE_TOLERANCE_UP,
+        WIDX_QUEUE_TOLERANCE_DOWN,
 
         // Advanced
         WIDX_GROUP_RCT1_PATH = WIDX_PAGE_START,
@@ -417,6 +422,7 @@ namespace OpenRCT2::Ui::Windows
     constexpr int32_t kTitleSequenceStart = 53;
     constexpr int32_t kScenarioOptionsGroupStart = kTitleSequenceStart + 39;
     constexpr int32_t kTweaksStart = kScenarioOptionsGroupStart + 72;
+    constexpr int32_t kGuestLogicStart = kTweaksStart + 96;
 
     static constexpr auto window_options_misc_widgets = makeWidgets(
         kMainOptionsWidgets,
@@ -437,7 +443,11 @@ namespace OpenRCT2::Ui::Windows
         makeWidget({ 10, kTweaksStart + 60}, {290, 15}, WidgetType::checkbox,     WindowColour::tertiary , STR_AUTO_OPEN_SHOPS,      STR_AUTO_OPEN_SHOPS_TIP                   ), // Automatically open shops & stalls
         makeWidget({ 10, kTweaksStart + 77}, {165, 12}, WidgetType::label,        WindowColour::secondary, STR_DEFAULT_INSPECTION_INTERVAL, STR_DEFAULT_INSPECTION_INTERVAL_TIP),
         makeWidget({175, kTweaksStart + 76}, {125, 14}, WidgetType::dropdownMenu, WindowColour::secondary                                                                      ), // Default inspection time dropdown
-        makeWidget({288, kTweaksStart + 77}, { 11, 12}, WidgetType::button,       WindowColour::secondary, STR_DROPDOWN_GLYPH,       STR_DEFAULT_INSPECTION_INTERVAL_TIP       )  // Default inspection time dropdown button
+        makeWidget({288, kTweaksStart + 77}, { 11, 12}, WidgetType::button,       WindowColour::secondary, STR_DROPDOWN_GLYPH,       STR_DEFAULT_INSPECTION_INTERVAL_TIP       ), // Default inspection time dropdown button
+
+        makeWidget        ({  5, kGuestLogicStart +  0}, {300, 35}, WidgetType::groupbox, WindowColour::secondary, STR_GUEST_LOGIC_GROUP                                            ), // Guest Logic group
+        makeWidget        ({ 10, kGuestLogicStart + 16}, {185, 12}, WidgetType::label,    WindowColour::secondary, STR_GUEST_QUEUE_TOLERANCE, STR_GUEST_QUEUE_TOLERANCE_TIP          ), // Queue tolerance (label)
+        makeSpinnerWidgets({200, kGuestLogicStart + 15}, {100, 14}, WidgetType::spinner,  WindowColour::secondary, kStringIdNone,             STR_GUEST_QUEUE_TOLERANCE_TIP          )  // Queue tolerance spinner (3 widgets)
     );
 
     constexpr int32_t kRCT1Start = 53;
@@ -647,6 +657,9 @@ namespace OpenRCT2::Ui::Windows
             {
                 case WINDOW_OPTIONS_PAGE_DISPLAY:
                     DisplayDraw(rt);
+                    break;
+                case WINDOW_OPTIONS_PAGE_MISC:
+                    MiscDraw(rt);
                     break;
                 case WINDOW_OPTIONS_PAGE_ADVANCED:
                     AdvancedDraw(rt);
@@ -1911,6 +1924,18 @@ namespace OpenRCT2::Ui::Windows
                     gDropdown.items[Config::Get().interface.scenarioPreviewScreenshots].setChecked(true);
                     break;
                 }
+                case WIDX_QUEUE_TOLERANCE_UP:
+                    Config::Get().guestLogic.queueToleranceMultiplier = std::min(
+                        4.0f, Config::Get().guestLogic.queueToleranceMultiplier + 0.25f);
+                    Config::Save();
+                    invalidateWidget(WIDX_QUEUE_TOLERANCE);
+                    break;
+                case WIDX_QUEUE_TOLERANCE_DOWN:
+                    Config::Get().guestLogic.queueToleranceMultiplier = std::max(
+                        1.0f, Config::Get().guestLogic.queueToleranceMultiplier - 0.25f);
+                    Config::Save();
+                    invalidateWidget(WIDX_QUEUE_TOLERANCE);
+                    break;
                 case WIDX_DEFAULT_INSPECTION_INTERVAL_DROPDOWN:
                     for (size_t i = 0; i < 7; i++)
                     {
@@ -2014,6 +2039,17 @@ namespace OpenRCT2::Ui::Windows
 
             auto selectedIndex = EnumValue(Config::Get().general.defaultInspectionInterval);
             widgets[WIDX_DEFAULT_INSPECTION_INTERVAL].text = kRideInspectionIntervalNames[selectedIndex];
+        }
+
+        void MiscDraw(RenderTarget& rt)
+        {
+            // Queue-tolerance multiplier, shown as e.g. "1.50" (value * 100 rendered with 2 decimals,
+            // matching the window-scale spinner readout).
+            auto ft = Formatter();
+            ft.Add<int32_t>(static_cast<int32_t>(Config::Get().guestLogic.queueToleranceMultiplier * 100));
+            drawText(
+                rt, windowPos + ScreenCoordsXY{ widgets[WIDX_QUEUE_TOLERANCE].left + 1, widgets[WIDX_QUEUE_TOLERANCE].top + 1 },
+                STR_WINDOW_COLOUR_2_COMMA2DP32, ft, { colours[1] });
         }
 
 #pragma endregion

@@ -234,6 +234,17 @@ namespace OpenRCT2::Config
         u8string allowedHosts;
     };
 
+    // Opt-in adjustments to guest decision-making and behaviour (our "Updated Guest Logic" subsystem,
+    // Options > Miscellaneous > Guest Logic). Every field defaults to a value that reproduces vanilla
+    // behaviour, so the whole group is a no-op until the player dials one in.
+    struct GuestLogic
+    {
+        // Multiplier on how long guests will tolerate a queue before complaining ("I've been queuing
+        // for ages") and eventually giving up. 1.0 = vanilla; higher = more patient, for the longer
+        // ride durations that realistic-scale custom rides run.
+        float queueToleranceMultiplier;
+    };
+
     struct Config
     {
         Config() = default;
@@ -248,6 +259,7 @@ namespace OpenRCT2::Config
         Notification notifications;
         Font fonts;
         Plugin plugin;
+        GuestLogic guestLogic;
     };
 
     Config& Get();
