@@ -1613,6 +1613,30 @@ namespace OpenRCT2
         }
     }
 
+    // Returns true if guestId is already linked in this station's queue chain. A guest must never
+    // be added to a queue it is already in: the join sites below link it as the new tail
+    // (LastPeepInQueue -> guest -> old tail), and if the guest is already reachable further down
+    // the chain that back-link splices a CYCLE into guestNextInQueue, hanging every later queue
+    // walk (Guest::removeFromQueue) forever. A stranded guest that abandoned a boarding attempt is
+    // re-queued at the front (still linked, state queuingFront), and can then re-approach a queue
+    // tile and hit a join site while still linked — this guards that. The walk is bounded so a
+    // pre-existing cycle can't hang the check itself.
+    static bool GuestIsAlreadyInStationQueue(const Ride& ride, StationIndex stationNum, EntityId guestId)
+    {
+        auto spriteIndex = ride.getStation(stationNum).LastPeepInQueue;
+        uint32_t guard = kMaxEntities;
+        while (!spriteIndex.IsNull() && guard-- > 0)
+        {
+            if (spriteIndex == guestId)
+                return true;
+            const auto* queued = getGameState().entities.GetEntity<Guest>(spriteIndex);
+            if (queued == nullptr)
+                break;
+            spriteIndex = queued->guestNextInQueue;
+        }
+        return false;
+    }
+
     /**
      *
      *  rct2: 0x00693EF2
@@ -1720,10 +1744,22 @@ namespace OpenRCT2
             guest->InteractionRideIndex = rideIndex;
 
             auto& station = ride->getStation(stationNum);
-            auto previous_last = station.LastPeepInQueue;
-            station.LastPeepInQueue = guest->id;
-            guest->guestNextInQueue = previous_last;
-            station.QueueLength++;
+            // Only link the guest as the new queue tail if it is not already in this queue — see
+            // GuestIsAlreadyInStationQueue. A stranded guest re-approaching the entrance while still
+            // queued would otherwise splice a guestNextInQueue cycle and hang every later queue walk.
+            if (!GuestIsAlreadyInStationQueue(*ride, stationNum, guest->id))
+            {
+                auto previous_last = station.LastPeepInQueue;
+                station.LastPeepInQueue = guest->id;
+                guest->guestNextInQueue = previous_last;
+                station.QueueLength++;
+            }
+            else
+            {
+                LOG_ERROR(
+                    "Guest %u re-joined ride %u queue (entrance) while already queued (state %u); cycle averted",
+                    guest->id.ToUnderlying(), rideIndex.ToUnderlying(), static_cast<uint32_t>(guest->State));
+            }
 
             guest->CurrentRide = rideIndex;
             guest->CurrentRideStation = stationNum;
@@ -2167,12 +2203,25 @@ namespace OpenRCT2
                         // Peep has decided to go on the ride at the queue.
                         guest->InteractionRideIndex = rideIndex;
 
-                        // Add the peep to the ride queue.
+                        // Add the peep to the ride queue — but only if it is not already in this
+                        // queue (see GuestIsAlreadyInStationQueue). Re-linking an already-queued
+                        // guest as the new tail splices a guestNextInQueue cycle that hangs every
+                        // later queue walk; a stranded guest that abandoned a boarding attempt can
+                        // re-approach this queue tile while still linked, so guard against it.
                         auto& station = ride->getStation(stationNum);
-                        auto old_last_peep = station.LastPeepInQueue;
-                        station.LastPeepInQueue = guest->id;
-                        guest->guestNextInQueue = old_last_peep;
-                        station.QueueLength++;
+                        if (!GuestIsAlreadyInStationQueue(*ride, stationNum, guest->id))
+                        {
+                            auto old_last_peep = station.LastPeepInQueue;
+                            station.LastPeepInQueue = guest->id;
+                            guest->guestNextInQueue = old_last_peep;
+                            station.QueueLength++;
+                        }
+                        else
+                        {
+                            LOG_ERROR(
+                                "Guest %u re-joined ride %u queue (path) while already queued (state %u); cycle averted",
+                                guest->id.ToUnderlying(), rideIndex.ToUnderlying(), static_cast<uint32_t>(guest->State));
+                        }
 
                         PeepDecrementNumRiders(guest);
                         guest->CurrentRide = rideIndex;

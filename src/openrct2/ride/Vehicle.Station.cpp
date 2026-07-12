@@ -559,9 +559,9 @@ void Vehicle::UpdateWaitingForPassengers()
         // Rotate-to-load rides start every loading cycle at window 0 (frame 0 = home / door
         // pose). NB: a spin can end at an arbitrary frame, so this currently snaps home; a
         // proper "arriving -> rotate to the unload pose" cadence is the follow-up. Also clear
-        // every cabin's rotateLoadUnloaded marker: the train still carries this cycle's riders
-        // (unloadingPassengers passed them through), and each cabin disembarks them once, when
-        // its window first reaches the platform during the sweep below.
+        // every cabin's sequential load/unload markers: the train still carries this cycle's
+        // riders (unloadingPassengers passed them through), and each cabin unloads-then-boards
+        // once, when its window first reaches the platform during the sweep below.
         if (GetFlatRideDescriptor(*curRide).RotateToLoad)
         {
             flatRideAnimationFrame = 0;
@@ -569,6 +569,7 @@ void Vehicle::UpdateWaitingForPassengers()
                  cabin = getGameState().entities.GetEntity<Vehicle>(cabin->next_vehicle_on_train))
             {
                 cabin->flags.unset(VehicleFlag::rotateLoadUnloaded);
+                cabin->flags.unset(VehicleFlag::rotateLoadBoardable);
             }
         }
 
@@ -663,17 +664,28 @@ void Vehicle::UpdateWaitingForPassengers()
                                 continue; // not in the platform at this rotation
                             anyPlatformCabin = true;
 
-                            // Interleaved disembark: the first time this cabin is presented to the
-                            // platform this loading cycle, send its ride-cycle riders off (they climb
-                            // out LIFO over the next few ticks) and reopen its seats for the new
-                            // batch. rotateLoadUnloaded (cleared at station claim) makes this fire
-                            // exactly once, so guests who board while the wheel still holds this
-                            // window are never mistaken for old riders and ejected again. NB: do NOT
-                            // break out of the loop below on the first not-full cabin - every platform
-                            // cabin must get its disembark trigger this tick.
+                            // Sequential per-cabin load/unload. A cabin passes through three stages
+                            // across its dwell at the platform, tracked by two one-shot flags so it is
+                            // never loading and unloading at the same time. (The earlier interleaved
+                            // version reset next_free_seat = 0 the instant a cabin reached the platform,
+                            // reopening its seats while its ride-cycle riders were still climbing out;
+                            // new boarders and departing riders then contended for the same seat indices,
+                            // desyncing num_peeps / next_free_seat / peep[] and CurrentSeat — the wheel
+                            // ended up with phantom rider counts that never cleared, hanging it in
+                            // "waiting for passengers" forever. Fully draining a cabin before it opens
+                            // for boarding removes the contention outright.) NB: do NOT break out of the
+                            // loop on the first not-full cabin — every platform cabin must be serviced
+                            // this tick.
+                            const uint8_t cabinSeats = cabin->num_seats & kVehicleSeatNumMask;
                             if (!cabin->flags.has(VehicleFlag::rotateLoadUnloaded))
                             {
-                                for (uint8_t p = 0; p < cabin->num_peeps; p++)
+                                // Stage 1 — trigger disembark. Send this cabin's ride-cycle riders off
+                                // (they leave over the next few ticks, each decrementing num_peeps). Do
+                                // NOT touch next_free_seat: it stays == cabinSeats from the last cycle,
+                                // so the boarding gate treats the cabin as full and offers no seat while
+                                // an old rider is still aboard. Iterate all seats (not num_peeps) so a
+                                // count already mid-decrement can't skip an occupied slot.
+                                for (uint8_t p = 0; p < cabinSeats; p++)
                                 {
                                     Guest* rider = getGameState().entities.GetEntity<Guest>(cabin->peep[p]);
                                     if (rider != nullptr)
@@ -682,18 +694,29 @@ void Vehicle::UpdateWaitingForPassengers()
                                         rider->RideSubState = PeepRideSubState::leaveVehicle;
                                     }
                                 }
-                                cabin->next_free_seat = 0; // reopen for boarding as riders climb out
                                 cabin->flags.set(VehicleFlag::rotateLoadUnloaded);
                             }
+                            else if (!cabin->flags.has(VehicleFlag::rotateLoadBoardable) && cabin->num_peeps == 0)
+                            {
+                                // Stage 2 — the cabin has fully emptied. Hard-reset it to a pristine
+                                // state: forward-rotation unload decrements num_peeps but does NOT clear
+                                // peep[], so stale rider ids would otherwise linger and be miscounted or
+                                // overwritten by a new boarder. Null every slot and reopen booking from
+                                // seat 0, then mark it Boardable — the gate offers it only from here, so
+                                // new riders always board an empty cabin with contiguous seats.
+                                for (uint8_t p = 0; p < cabinSeats; p++)
+                                    cabin->peep[p] = EntityId::GetNull();
+                                cabin->next_free_seat = 0;
+                                cabin->flags.set(VehicleFlag::rotateLoadBoardable);
+                            }
 
-                            // The window is "boarded" only when every platform cabin is full of NEW
-                            // riders: all seats re-reserved (next_free_seat) AND seated (num_peeps).
-                            // A cabin still disembarking has num_peeps > next_free_seat (old riders
-                            // aboard, seats already reopened), so it never counts as full until the
-                            // swap finishes - which is what keeps the wheel held long enough for the
-                            // load/unload to complete before the early-release rotates it on.
-                            const uint8_t cabinSeats = cabin->num_seats & kVehicleSeatNumMask;
-                            if (cabin->num_peeps < cabinSeats || cabin->next_free_seat < cabinSeats)
+                            // Stage 3 — the window is "boarded" only when every platform cabin has
+                            // finished its unload/reset (Boardable) AND is full of NEW riders: all seats
+                            // re-reserved (next_free_seat) AND seated (num_peeps). A cabin still emptying
+                            // (Boardable unset) never counts as full, which holds the wheel through the
+                            // disembark before the early-release rotates it on.
+                            if (!cabin->flags.has(VehicleFlag::rotateLoadBoardable)
+                                || cabin->num_peeps < cabinSeats || cabin->next_free_seat < cabinSeats)
                                 windowFull = false;
                         }
                         if (anyPlatformCabin && windowFull)
@@ -731,6 +754,7 @@ void Vehicle::UpdateWaitingForPassengers()
                     flatRideAnimationFrame = 0;
                     invalidate();
                 }
+
                 flags.set(VehicleFlag::readyToDepart);
                 TrainReadyToDepart(num_peeps_on_train, num_used_seats_on_train);
                 return;
@@ -1097,12 +1121,13 @@ void Vehicle::UpdateUnloadingPassengers()
 
     const auto& currentStation = curRide->getStation(current_station);
 
-    // Rotate-to-load (Ferris-wheel) rides disembark INTERLEAVED with boarding, so do NOT bulk-
-    // unload here: keep every rider seated and hand the train off to the loading sweep in
-    // UpdateWaitingForPassengers, which sends each cabin's riders off as its window returns to the
-    // platform while new guests climb in. Restraints are opened above (sub_state 0); once open we
-    // pass straight to MovingToEndOfStation (a no-op for RideMode::rotation that just switches to
-    // waitingForPassengers). Test measurement still finalises here, exactly as the normal path.
+    // Rotate-to-load (Ferris-wheel) rides unload during the loading sweep, one cabin at a time as
+    // its window returns to the platform, so do NOT bulk-unload here: keep every rider seated and
+    // hand the train off to UpdateWaitingForPassengers, which fully drains each cabin and then
+    // opens it for the new batch (sequential per-cabin, never both at once). Restraints are opened
+    // above (sub_state 0); once open we pass straight to MovingToEndOfStation (a no-op for
+    // RideMode::rotation that just switches to waitingForPassengers). Test measurement still
+    // finalises here, exactly as the normal path.
     if (GetFlatRideDescriptor(*curRide).RotateToLoad)
     {
         if (sub_state != 1)

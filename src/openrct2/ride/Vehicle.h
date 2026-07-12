@@ -96,10 +96,18 @@ enum class VehicleFlag : uint8_t
     // Rotate-to-load flat rides only: set the first time a cabin is presented to the loading
     // platform during a loading sweep, once its ride-cycle riders have been told to disembark.
     // Reset for every cabin when the train claims the station (UpdateWaitingForPassengers
-    // sub_state 0). Lets the interleaved (Ferris-wheel) disembark fire exactly once per cabin so
-    // guests who board afterwards are never mistaken for old riders and ejected again. Occupies a
-    // previously-unused flag bit, so it defaults to 0 (unset) in every existing save.
+    // sub_state 0). First stage of the sequential per-cabin load/unload: while set but the cabin
+    // is still emptying (num_peeps > 0) no new guest may board it. Occupies a previously-unused
+    // flag bit, so it defaults to 0 (unset) in every existing save.
     rotateLoadUnloaded,
+    // Rotate-to-load flat rides only: second stage of the sequential per-cabin load/unload. Set
+    // once a disembarking cabin has fully emptied (num_peeps hit 0) and been hard-reset to a
+    // pristine state (all peep slots nulled, next_free_seat = 0). ONLY a Boardable cabin accepts
+    // new riders, so a cabin is never loading and unloading at once — the interleaved version
+    // reopened seats mid-disembark, desyncing num_peeps/next_free_seat/peep[] into phantom counts
+    // that hung the wheel in "waiting for passengers" forever. Reset with rotateLoadUnloaded when
+    // the train claims the station. Previously-unused flag bit, defaults to 0 in every save.
+    rotateLoadBoardable,
 };
 using VehicleFlags = FlagHolder<uint32_t, VehicleFlag>;
 

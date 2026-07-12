@@ -2669,14 +2669,13 @@ namespace OpenRCT2
                 if (sampled >= rtlPlatformSpan)
                     continue; // this cabin is not in the platform at the current rotation
 
-                // ...and it must have finished dropping its previous riders. Interleaved load/
-                // unload reopens a cabin's seats (next_free_seat = 0) the instant its window
-                // reaches the platform, while the ride-cycle riders are still climbing out; those
-                // leaving riders are still counted in num_peeps, so num_peeps > next_free_seat
-                // marks a cabin mid-disembark. Boarding it now would drop a new guest into a seat
-                // an old rider has not yet vacated, so wait until it is empty (num_peeps falls to
-                // next_free_seat) before offering it.
-                if (vehicle->num_peeps > vehicle->next_free_seat)
+                // ...and it must have finished dropping its previous riders and been reset to a
+                // pristine empty state. Sequential per-cabin load/unload marks a cabin Boardable
+                // (in UpdateWaitingForPassengers) only after num_peeps fell to 0, every peep slot
+                // was nulled, and next_free_seat was reopened at 0. Until then the cabin still
+                // reads full from the last cycle, so boarding it would drop a new guest into a seat
+                // an old rider has not yet vacated — wait for Boardable before offering it.
+                if (!vehicle->flags.has(VehicleFlag::rotateLoadBoardable))
                     continue;
             }
 
@@ -7684,13 +7683,26 @@ namespace OpenRCT2
             LOG_ERROR("Invalid Guest Queue list!");
             return;
         }
-        for (; otherGuest != nullptr; otherGuest = gameState.entities.GetEntity<Guest>(otherGuest->guestNextInQueue))
+        // Defensive walk bound: a corrupted queue chain (e.g. a self-cycle from re-inserting a
+        // still-linked guest, see Ride::queueInsertGuestAtFront) would otherwise spin this loop
+        // forever and hard-freeze the game with no error. A valid predecessor is always found
+        // within the live guest count, so cap the walk there and bail with an error instead of
+        // hanging — a bad chain degrades to a logged glitch, not a lockup.
+        uint32_t walkGuard = kMaxEntities;
+        for (; otherGuest != nullptr && walkGuard > 0;
+             otherGuest = gameState.entities.GetEntity<Guest>(otherGuest->guestNextInQueue), walkGuard--)
         {
             if (id == otherGuest->guestNextInQueue)
             {
                 otherGuest->guestNextInQueue = guestNextInQueue;
                 return;
             }
+        }
+        if (walkGuard == 0)
+        {
+            LOG_ERROR(
+                "Cyclic guest queue on ride %u while removing guest %u; walk aborted", CurrentRide.ToUnderlying(),
+                id.ToUnderlying());
         }
     }
 

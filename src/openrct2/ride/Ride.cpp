@@ -390,9 +390,23 @@ void Ride::queueInsertGuestAtFront(StationIndex stationIndex, Guest* peep)
     {
         getStation(peep->CurrentRideStation).LastPeepInQueue = peep->id;
     }
-    else
+    else if (queueHeadGuest != peep)
     {
         queueHeadGuest->guestNextInQueue = peep->id;
+    }
+    else
+    {
+        // Self-cycle guard. peep->guestNextInQueue was nulled above BEFORE the head walk, so if
+        // peep is still linked in this station's queue the walk terminates ON peep and returns it
+        // as the head — the original code then set peep->guestNextInQueue = peep->id, a one-node
+        // cycle that hangs every later queue walk (Guest::removeFromQueue) forever and hard-freezes
+        // the game. That only happens when a guest is re-inserted while still queued (a rejoin path
+        // firing on a guest that was never unlinked); peep is already the front terminal here, so
+        // the correct action is to leave it in place, not self-link. Logged (with state) so the
+        // offending rejoin path can be traced and fixed at source.
+        LOG_ERROR(
+            "Guest %u re-inserted into ride %u queue while still linked (peep state %u); self-cycle averted",
+            peep->id.ToUnderlying(), peep->CurrentRide.ToUnderlying(), static_cast<uint32_t>(peep->State));
     }
     updateQueueLength(peep->CurrentRideStation);
 }
