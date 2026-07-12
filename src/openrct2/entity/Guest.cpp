@@ -1952,11 +1952,17 @@ namespace OpenRCT2
         Ride* bestRide = nullptr;
         float bestScore = 0.0f;
         const float distanceWeight = Config::Get().guestLogic.rideChoiceDistanceWeight;
+        const float memoryPenalty = Config::Get().guestLogic.rideMemoryPenalty;
 
         auto& gameState = getGameState();
         for (auto& ride : RideManager(gameState))
         {
-            if (guest.hasRidden(ride))
+            const bool ridden = guest.hasRidden(ride);
+            // Vanilla permanently excludes any ride the guest has already been on. With the ride-memory
+            // penalty off (0), preserve that exactly. When it is on, we instead keep already-ridden rides
+            // in the running but dock their score below, so a guest can re-ride when nothing fresh is a
+            // better option.
+            if (ridden && memoryPenalty <= 0.0f)
             {
                 continue;
             }
@@ -1979,6 +1985,13 @@ namespace OpenRCT2
                                     / kCoordsXYStep;
                                 score -= distanceWeight * static_cast<float>(tiles);
                             }
+                        }
+                        // Flat penalty for a repeat ride, in the same rating-hundredths units (the slider
+                        // is in excitement points, so scale by 100). Because an unridden ride never takes
+                        // this hit, a fresh ride always out-scores an otherwise-identical ridden one.
+                        if (ridden)
+                        {
+                            score -= memoryPenalty * 100.0f;
                         }
                         if (bestRide == nullptr || score > bestScore)
                         {

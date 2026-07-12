@@ -258,6 +258,16 @@ namespace OpenRCT2::Config
         // floor (never the ceiling), so nervous guests still avoid coasters. 0 = vanilla; range 0-3.
         // Applies only to guests spawned while the setting is active.
         uint8_t intensityFloorReduction;
+
+        // Vanilla guests will never re-ride a ride they have already been on - once ridden, a ride is
+        // permanently struck from their consideration. In a park of custom flat/gentle rides that means
+        // a guest rides each one once and then has nothing left to do. This replaces that hard exclusion
+        // with a flat desirability penalty (in excitement points) applied to already-ridden rides, so a
+        // guest may choose to re-ride a nearby ride when nothing fresh is nearby, while still preferring
+        // rides they haven't been on. 0.0 = vanilla (already-ridden rides are excluded outright); higher
+        // = a bigger penalty, i.e. more reluctant to repeat. Best paired with ride distance weighting so
+        // repeats stay local rather than sending guests back across the park to a favourite coaster.
+        float rideMemoryPenalty;
     };
 
     struct Config

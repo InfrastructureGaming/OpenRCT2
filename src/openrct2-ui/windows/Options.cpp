@@ -246,6 +246,10 @@ namespace OpenRCT2::Ui::Windows
         WIDX_INTENSITY_FLOOR,
         WIDX_INTENSITY_FLOOR_UP,
         WIDX_INTENSITY_FLOOR_DOWN,
+        WIDX_RIDE_MEMORY_PENALTY_LABEL,
+        WIDX_RIDE_MEMORY_PENALTY,
+        WIDX_RIDE_MEMORY_PENALTY_UP,
+        WIDX_RIDE_MEMORY_PENALTY_DOWN,
 
         // Advanced
         WIDX_GROUP_RCT1_PATH = WIDX_PAGE_START,
@@ -453,13 +457,15 @@ namespace OpenRCT2::Ui::Windows
         makeWidget({175, kTweaksStart + 76}, {125, 14}, WidgetType::dropdownMenu, WindowColour::secondary                                                                      ), // Default inspection time dropdown
         makeWidget({288, kTweaksStart + 77}, { 11, 12}, WidgetType::button,       WindowColour::secondary, STR_DROPDOWN_GLYPH,       STR_DEFAULT_INSPECTION_INTERVAL_TIP       ), // Default inspection time dropdown button
 
-        makeWidget        ({  5, kGuestLogicStart +  0}, {300, 68}, WidgetType::groupbox, WindowColour::secondary, STR_GUEST_LOGIC_GROUP                                                ), // Guest Logic group
+        makeWidget        ({  5, kGuestLogicStart +  0}, {300, 84}, WidgetType::groupbox, WindowColour::secondary, STR_GUEST_LOGIC_GROUP                                                ), // Guest Logic group
         makeWidget        ({ 10, kGuestLogicStart + 16}, {185, 12}, WidgetType::label,    WindowColour::secondary, STR_GUEST_QUEUE_TOLERANCE,      STR_GUEST_QUEUE_TOLERANCE_TIP          ), // Queue tolerance (label)
         makeSpinnerWidgets({200, kGuestLogicStart + 15}, {100, 14}, WidgetType::spinner,  WindowColour::secondary, kStringIdNone,                  STR_GUEST_QUEUE_TOLERANCE_TIP          ), // Queue tolerance spinner (3 widgets)
         makeWidget        ({ 10, kGuestLogicStart + 32}, {185, 12}, WidgetType::label,    WindowColour::secondary, STR_GUEST_RIDE_DISTANCE_WEIGHT, STR_GUEST_RIDE_DISTANCE_WEIGHT_TIP     ), // Ride distance weighting (label)
         makeSpinnerWidgets({200, kGuestLogicStart + 31}, {100, 14}, WidgetType::spinner,  WindowColour::secondary, kStringIdNone,                  STR_GUEST_RIDE_DISTANCE_WEIGHT_TIP     ), // Ride distance weighting spinner (3 widgets)
         makeWidget        ({ 10, kGuestLogicStart + 48}, {185, 12}, WidgetType::label,    WindowColour::secondary, STR_GUEST_INTENSITY_FLOOR,      STR_GUEST_INTENSITY_FLOOR_TIP          ), // Intensity floor softening (label)
-        makeSpinnerWidgets({200, kGuestLogicStart + 47}, {100, 14}, WidgetType::spinner,  WindowColour::secondary, kStringIdNone,                  STR_GUEST_INTENSITY_FLOOR_TIP          )  // Intensity floor softening spinner (3 widgets)
+        makeSpinnerWidgets({200, kGuestLogicStart + 47}, {100, 14}, WidgetType::spinner,  WindowColour::secondary, kStringIdNone,                  STR_GUEST_INTENSITY_FLOOR_TIP          ), // Intensity floor softening spinner (3 widgets)
+        makeWidget        ({ 10, kGuestLogicStart + 64}, {185, 12}, WidgetType::label,    WindowColour::secondary, STR_GUEST_RIDE_MEMORY_PENALTY,  STR_GUEST_RIDE_MEMORY_PENALTY_TIP      ), // Ride memory penalty (label)
+        makeSpinnerWidgets({200, kGuestLogicStart + 63}, {100, 14}, WidgetType::spinner,  WindowColour::secondary, kStringIdNone,                  STR_GUEST_RIDE_MEMORY_PENALTY_TIP      )  // Ride memory penalty spinner (3 widgets)
     );
 
     constexpr int32_t kRCT1Start = 53;
@@ -1974,6 +1980,18 @@ namespace OpenRCT2::Ui::Windows
                     Config::Save();
                     invalidateWidget(WIDX_INTENSITY_FLOOR);
                     break;
+                case WIDX_RIDE_MEMORY_PENALTY_UP:
+                    Config::Get().guestLogic.rideMemoryPenalty = std::min(
+                        10.0f, Config::Get().guestLogic.rideMemoryPenalty + 0.25f);
+                    Config::Save();
+                    invalidateWidget(WIDX_RIDE_MEMORY_PENALTY);
+                    break;
+                case WIDX_RIDE_MEMORY_PENALTY_DOWN:
+                    Config::Get().guestLogic.rideMemoryPenalty = std::max(
+                        0.0f, Config::Get().guestLogic.rideMemoryPenalty - 0.25f);
+                    Config::Save();
+                    invalidateWidget(WIDX_RIDE_MEMORY_PENALTY);
+                    break;
                 case WIDX_DEFAULT_INSPECTION_INTERVAL_DROPDOWN:
                     for (size_t i = 0; i < 7; i++)
                     {
@@ -2105,6 +2123,14 @@ namespace OpenRCT2::Ui::Windows
                 rt,
                 windowPos + ScreenCoordsXY{ widgets[WIDX_INTENSITY_FLOOR].left + 1, widgets[WIDX_INTENSITY_FLOOR].top + 1 },
                 STR_WINDOW_COLOUR_2_COMMA32, ft, { colours[1] });
+
+            ft = Formatter();
+            ft.Add<int32_t>(static_cast<int32_t>(Config::Get().guestLogic.rideMemoryPenalty * 100));
+            drawText(
+                rt,
+                windowPos
+                    + ScreenCoordsXY{ widgets[WIDX_RIDE_MEMORY_PENALTY].left + 1, widgets[WIDX_RIDE_MEMORY_PENALTY].top + 1 },
+                STR_WINDOW_COLOUR_2_COMMA2DP32, ft, { colours[1] });
         }
 
 #pragma endregion

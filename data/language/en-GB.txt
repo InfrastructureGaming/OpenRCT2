@@ -3850,3 +3850,5 @@ STR_7116    :Ride distance weighting
 STR_7117    :How strongly guests prefer nearby rides when choosing where to go next. Higher values stop guests trekking across the park to a distant coaster, so nearby rides of all kinds get fairer consideration. 0.00 = default game behaviour (always the most exciting ride, however far).
 STR_7118    :Intensity floor softening
 STR_7119    :Lowers the minimum intensity newly-arriving guests insist on, so more of them are willing to try gentle rides. Only the floor is lowered, so nervous guests still avoid extreme rides. Affects guests spawned while this is on. 0 = default game behaviour.
+STR_7120    :Ride memory penalty
+STR_7121    :How reluctant guests are to re-ride something they have already been on, in excitement points. Normally a ride is off the guest's list forever once ridden; this instead lets them re-ride when nothing new is nearby, keeping rides busy in a settled park. Works best with ride distance weighting. 0.00 = default game behaviour (already-ridden rides are never chosen again).
