@@ -657,6 +657,7 @@ namespace OpenRCT2::Config
             auto model = &_config.guestLogic;
             model->queueToleranceMultiplier = reader->GetFloat("queue_tolerance_multiplier", 1.0f);
             model->rideChoiceDistanceWeight = reader->GetFloat("ride_choice_distance_weight", 0.0f);
+            model->intensityFloorReduction = static_cast<uint8_t>(reader->GetInt32("intensity_floor_reduction", 0));
         }
     }
 
@@ -666,6 +667,7 @@ namespace OpenRCT2::Config
         writer->WriteSection("guest_logic");
         writer->WriteFloat("queue_tolerance_multiplier", model->queueToleranceMultiplier);
         writer->WriteFloat("ride_choice_distance_weight", model->rideChoiceDistanceWeight);
+        writer->WriteInt32("intensity_floor_reduction", model->intensityFloorReduction);
     }
 
     bool SetDefaults()

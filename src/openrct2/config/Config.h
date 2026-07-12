@@ -251,6 +251,13 @@ namespace OpenRCT2::Config
         // flat ride out-score a far-off coaster, spreading guests across the park and cutting the
         // long treks that strand guests mid-journey.
         float rideChoiceDistanceWeight;
+
+        // Amount by which to lower a newly-spawned guest's natural minimum-intensity preference. Guests
+        // spawn with an intensity floor (roughly 0-4) that makes many of them reject anything gentle;
+        // this softens that floor so more guests are willing to ride calmer attractions. Only lowers the
+        // floor (never the ceiling), so nervous guests still avoid coasters. 0 = vanilla; range 0-3.
+        // Applies only to guests spawned while the setting is active.
+        uint8_t intensityFloorReduction;
     };
 
     struct Config

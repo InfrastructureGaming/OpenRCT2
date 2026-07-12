@@ -7369,6 +7369,15 @@ namespace OpenRCT2
         uint8_t intensityHighest = (ScenarioRand() & 0x7) + 3;
         uint8_t intensityLowest = std::min(intensityHighest, static_cast<uint8_t>(7)) - 3;
 
+        // Guest Logic (opt-in): soften the spawned intensity floor so more guests are willing to
+        // consider gentle rides. We only lower intensityLowest (never touch intensityHighest), so
+        // nervous guests still avoid coasters — they just also accept calmer attractions. Applied to
+        // the natural spawn value only; the explicit park intensity-preference overrides below still
+        // win, since those represent a deliberate player/scenario choice.
+        const uint8_t floorReduction = Config::Get().guestLogic.intensityFloorReduction;
+        if (floorReduction > 0)
+            intensityLowest = (intensityLowest > floorReduction) ? (intensityLowest - floorReduction) : 0;
+
         if (intensityHighest >= 7)
             intensityHighest = 15;
 
