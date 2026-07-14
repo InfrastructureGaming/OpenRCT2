@@ -22,6 +22,10 @@ namespace OpenRCT2
         jumpingFountain,
         balloon,
         duck,
+        // A short vertical slice of a large ride's structure, hosted as its own entity so each
+        // slice sorts locally against its true neighbours (beats the tall-sprite wall). Appended
+        // before `count` so existing serialized type values are unchanged. See RideStructureSegment.
+        rideStructureSegment,
         count,
         null = 255
     };

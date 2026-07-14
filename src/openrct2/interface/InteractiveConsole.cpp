@@ -36,9 +36,11 @@
 #include "../drawing/Drawing.h"
 #include "../drawing/Font.h"
 #include "../drawing/Image.h"
+#include "../SpriteIds.h"
 #include "../entity/Balloon.h"
 #include "../entity/EntityList.h"
 #include "../entity/EntityRegistry.h"
+#include "../entity/RideStructureSegment.h"
 #include "../entity/Staff.h"
 #include "../interface/Chat.h"
 #include "../interface/Viewport.h"
@@ -1771,6 +1773,102 @@ static void ConsoleSpawnBalloon(InteractiveConsole& console, const arguments_t& 
     Balloon::Create({ x, y, z }, colour, false);
 }
 
+// THROWAWAY PROBE (large-ride step 1): spawns a vertical stack of RideStructureSegment entities at
+// the viewport centre to validate the new entity type end-to-end — registration, paint dispatch, and
+// (the point) that a stack of short-bbox slices sorts flicker-free under partial redraws, now on the
+// real segment type rather than the hijacked balloon of the earlier spike. Remove before shipping.
+// Usage: seg_stack [count=12] [stepZ=16]
+static void ConsoleCommandSegStack(InteractiveConsole& console, const arguments_t& argv)
+{
+    int32_t count = 12;
+    if (argv.size() > 0)
+    {
+        int32_t v = atoi(argv[0].c_str());
+        if (v > 0) // atoi("")/atoi(bad) == 0; never spawn zero (the spike's "Spiked 0" bug)
+            count = v;
+    }
+    int32_t stepZ = 16;
+    if (argv.size() > 1)
+    {
+        int32_t v = atoi(argv[1].c_str());
+        if (v > 0)
+            stepZ = v;
+    }
+
+    WindowBase* w = WindowGetMain();
+    if (w == nullptr)
+    {
+        console.WriteLineError("No main window.");
+        return;
+    }
+    Viewport* viewport = WindowGetViewport(w);
+    if (viewport == nullptr)
+    {
+        console.WriteLineError("No viewport.");
+        return;
+    }
+    auto info = GetMapCoordinatesFromPosWindow(
+        w, { viewport->width / 2, viewport->height / 2 }, EnumsToFlags(ViewportInteractionItem::terrain));
+    const CoordsXY loc = info.Loc.ToTileCentre();
+    const int32_t baseZ = TileElementHeight(loc);
+
+    const uint8_t sliceCount = static_cast<uint8_t>(count > 255 ? 255 : count);
+    int32_t spawned = 0;
+    for (int32_t i = 0; i < count; i++)
+    {
+        auto* seg = RideStructureSegment::Create(
+            { loc.x, loc.y, baseZ + i * stepZ }, SPR_BALLOON, static_cast<uint8_t>(i), sliceCount,
+            static_cast<uint8_t>(stepZ));
+        if (seg != nullptr)
+            spawned++;
+    }
+
+    // Freshly-created entities aren't findable by the painter until the per-tick spatial-index
+    // rebuild runs — invisible while PAUSED. Force it so the probe shows immediately (spike lesson).
+    getGameState().entities.UpdateEntitiesSpatialIndex();
+
+    console.WriteFormatLine("Spawned %d structure segments at (%d, %d) base z %d.", spawned, loc.x, loc.y, baseZ);
+}
+
+// THROWAWAY (large-ride step 2a): force structure segments onto an existing placed ride, so the whole
+// ride-owned lifecycle (spawn / persist while closed / recolour / save-load respawn / demolish) can be
+// validated WITHOUT a tool UI to author `structureSegmentCount` and repackage a parkobj. The override
+// feeds the same effective-count both the spawn and the structure-suppression paths read, so a forced
+// ride behaves exactly like an authored one. Find the ride id with `rides list`.
+// Usage: ride_segments <rideId> <count> [height=16]   (count 0 clears)
+static void ConsoleCommandRideSegments(InteractiveConsole& console, const arguments_t& argv)
+{
+    if (argv.size() < 2)
+    {
+        console.WriteLineError("Usage: ride_segments <rideId> <count> [height]  (find rideId via 'rides list')");
+        return;
+    }
+    int32_t rideIndex = atoi(argv[0].c_str());
+    int32_t count = atoi(argv[1].c_str());
+    int32_t height = (argv.size() > 2) ? atoi(argv[2].c_str()) : 16;
+    if (count < 0)
+        count = 0;
+    if (count > 255)
+        count = 255;
+    if (height <= 0)
+        height = 16;
+    if (height > 255)
+        height = 255;
+
+    auto* ride = GetRide(RideId::FromUnderlying(static_cast<uint16_t>(rideIndex)));
+    if (ride == nullptr)
+    {
+        console.WriteLineError("No such ride. Use 'rides list' to find a ride id.");
+        return;
+    }
+
+    RideStructureSegmentSetOverride(ride->id, static_cast<uint8_t>(count), static_cast<uint8_t>(height));
+    // Clear any existing segments so the next Ride::Update respawns with the new count (or, for
+    // count 0, leaves them gone).
+    RideStructureSegmentsRemove(ride->id);
+    console.WriteFormatLine("Ride %d: structure segments = %d (slice height %d).", rideIndex, count, height);
+}
+
 using console_command_func = void (*)(InteractiveConsole& console, const arguments_t& argv);
 struct ConsoleCommand
 {
@@ -1856,9 +1954,14 @@ static constexpr ConsoleCommand console_command_table[] = {
       "remove_unused_objects" },
     { "remove_floating_objects", ConsoleCommandRemoveFloatingObjects, "Removes floating objects", "remove_floating_objects" },
     { "rides", ConsoleCommandRides, "Ride management.", "rides <subcommand>" },
+    { "ride_segments", ConsoleCommandRideSegments,
+      "THROWAWAY: force large-ride structure segments onto a placed ride (find id via 'rides list').",
+      "ride_segments <rideId> <count> [height]" },
     { "save_park", ConsoleCommandSavePark, "Save current state of park. If no name specified default path will be used.",
       "save_park [name]" },
     { "say", ConsoleCommandSay, "Say to other players.", "say <message>" },
+    { "seg_stack", ConsoleCommandSegStack, "THROWAWAY: spawns a stack of ride structure segments (large-ride probe).",
+      "seg_stack [count] [stepZ]" },
     { "set", ConsoleCommandSet, "Sets the variable to the specified value.", "set <variable> <value>" },
     { "show_limits", ConsoleCommandShowLimits, "Shows the map data counts and limits.", "show_limits" },
     { "spawn_balloon", ConsoleSpawnBalloon, "Spawns a balloon.", "spawn_balloon <x> <y> <z> <colour>" },

@@ -287,6 +287,7 @@
     <ClInclude Include="entity\Particle.h" />
     <ClInclude Include="entity\PatrolArea.h" />
     <ClInclude Include="entity\Peep.h" />
+    <ClInclude Include="entity\RideStructureSegment.h" />
     <ClInclude Include="entity\Staff.h" />
     <ClInclude Include="entity\Yaw.hpp" />
     <ClInclude Include="FileClassifier.h" />
@@ -407,6 +408,7 @@
     <ClInclude Include="paint\entity\Paint.Litter.h" />
     <ClInclude Include="paint\entity\Paint.MoneyEffect.h" />
     <ClInclude Include="paint\entity\Paint.Peep.h" />
+    <ClInclude Include="paint\entity\Paint.RideStructureSegment.h" />
     <ClInclude Include="paint\entity\Paint.Staff.h" />
     <ClInclude Include="paint\entity\Paint.SteamParticle.h" />
     <ClInclude Include="paint\entity\Paint.Vehicle.h" />
@@ -924,6 +926,7 @@
     <ClCompile Include="entity\Particle.cpp" />
     <ClCompile Include="entity\PatrolArea.cpp" />
     <ClCompile Include="entity\Peep.cpp" />
+    <ClCompile Include="entity\RideStructureSegment.cpp" />
     <ClCompile Include="entity\Staff.cpp" />
     <ClCompile Include="FileClassifier.cpp" />
     <ClCompile Include="Game.cpp" />
@@ -1021,6 +1024,7 @@
     <ClCompile Include="paint\entity\Paint.Litter.cpp" />
     <ClCompile Include="paint\entity\Paint.MoneyEffect.cpp" />
     <ClCompile Include="paint\entity\Paint.Peep.cpp" />
+    <ClCompile Include="paint\entity\Paint.RideStructureSegment.cpp" />
     <ClCompile Include="paint\entity\Paint.Staff.cpp" />
     <ClCompile Include="paint\entity\Paint.SteamParticle.cpp" />
     <ClCompile Include="paint\entity\Paint.Vehicle.cpp" />
