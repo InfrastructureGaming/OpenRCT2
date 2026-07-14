@@ -190,6 +190,18 @@ static void PaintSmallSceneryBody(
             baseImageIndex += 4;
         }
     }
+    // Reactive scenery (e.g. a crossing gate) is a SINGLE animated sprite driven by the `age` cursor - the
+    // whole object moves, unlike a fountain/clock which is a static base with a moving overlay. So the base
+    // sprite drawn below IS the current frame, and the isAnimated overlay block further down is skipped for
+    // reactive objects. Without this, the base would stay frame 0 (the raised gate) while the overlay drew
+    // the lowering frame on top, painting the gate in two positions at once.
+    if (sceneryEntry->reactive.type != ReactiveTriggerType::none
+        && sceneryEntry->flags.has(SmallSceneryFlag::hasFrameOffsets))
+    {
+        const uint32_t frame = sceneryElement.GetAge();
+        const uint32_t block = frame < sceneryEntry->FrameOffsetCount ? sceneryEntry->frame_offsets[frame] : 0;
+        baseImageIndex = sceneryEntry->image + direction + (block * 4);
+    }
     if (!sceneryEntry->flags.has(SmallSceneryFlag::isVisibleWhenZoomed))
     {
         auto imageId = imageTemplate.WithIndex(baseImageIndex);
@@ -217,7 +229,11 @@ static void PaintSmallSceneryBody(
         PaintAddImageAsChild(session, imageId, offset, boundBox);
     }
 
-    if (sceneryEntry->flags.has(SmallSceneryFlag::isAnimated))
+    // Reactive scenery already drew its current frame as the base sprite above, so it must NOT also draw the
+    // animated overlay here (that would restore the "two positions at once" double-draw). All other animated
+    // scenery (fountains, clocks, cogwheels, ordinary frame-sequence props) overlays as usual.
+    if (sceneryEntry->flags.has(SmallSceneryFlag::isAnimated)
+        && sceneryEntry->reactive.type == ReactiveTriggerType::none)
     {
         const auto currentTicks = getGameState().currentTicks;
 
@@ -276,8 +292,12 @@ static void PaintSmallSceneryBody(
             }
             else if (sceneryEntry->flags.has(SmallSceneryFlag::hasFrameOffsets))
             {
+                // Ordinary frame-sequence scenery: the frame is the free-running tick counter (optionally
+                // scattered per-tile unless cogwheel-synchronized). Reactive frame-sequence objects never
+                // reach here - they draw their `age`-cursor frame as the base sprite above (see the reactive
+                // baseImageIndex override) and are excluded from this isAnimated overlay block.
                 auto delay = sceneryEntry->animation_delay & 0xFF;
-                auto frame = currentTicks;
+                uint32_t frame = currentTicks;
                 if (!sceneryEntry->flags.has(SmallSceneryFlag::isCogwheel))
                 {
                     frame += ((session.SpritePosition.x / 4) + (session.SpritePosition.y / 4));

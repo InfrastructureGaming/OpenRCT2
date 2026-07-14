@@ -177,6 +177,13 @@ void SmallSceneryElement::UpdateAge(const CoordsXY& sceneryPos)
         return;
     }
 
+    // Reactive scenery reuses the `age` byte as its open<->closed animation cursor (see
+    // SmallSceneryEntry.h / MapAnimation.cpp), so the withering/aging system must never touch it.
+    if (sceneryEntry->reactive.type != ReactiveTriggerType::none)
+    {
+        return;
+    }
+
     auto& gameState = getGameState();
     if (gameState.cheats.disablePlantAging && sceneryEntry->flags.has(SmallSceneryFlag::canBeWatered))
     {

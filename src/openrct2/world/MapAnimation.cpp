@@ -149,14 +149,138 @@ static bool UpdatePathAnimation(
     return false;
 }
 
+// Vertical tolerance for the crossing sense. A gate engages off a blocked crossing path within one land
+// level up or down of its own base, so slightly raised / sunken / sloped crossings still trigger it (a
+// crossing on flat ground already shares the gate's baseZ). Wide enough to be forgiving of terrain, narrow
+// enough that a gate never reacts to an unrelated path a full storey above or below.
+constexpr int32_t kCrossingSenseZTolerance = kLandHeightStep;
+
+// How far (in tiles, Chebyshev distance) from a crossing gate a blocked crossing path is sensed. The scan
+// is the (2r+1)x(2r+1) block centred on the gate, so r=2 is a 5x5 area: the gate reacts when placed within
+// two tiles of the crossing, in any rotation, and starts lowering slightly earlier than a tight r=1 (3x3).
+constexpr int32_t kCrossingSenseRadius = 2;
+
+// True when `tile` holds a non-ghost footpath, within kCrossingSenseZTolerance of `worldZ`, that
+// Vehicle::UpdateCrossings() has flagged blocked by an approaching level-crossing train. Iterates the
+// tile's elements directly (rather than MapGetPathElementAt, whose exact-baseHeight match is what made the
+// gate so placement-sensitive) so any path on the tile at roughly the gate's level counts.
+static bool CrossingBlockedAtTile(const CoordsXY& tile, const int32_t worldZ)
+{
+    auto* element = MapGetFirstElementAt(TileCoordsXY{ tile });
+    if (element == nullptr)
+        return false;
+    do
+    {
+        if (element->getType() != TileElementType::path || element->isGhost())
+            continue;
+        const int32_t dz = element->getBaseZ() - worldZ;
+        if (dz > kCrossingSenseZTolerance || dz < -kCrossingSenseZTolerance)
+            continue;
+        if (element->asPath()->IsBlockedByVehicle())
+            return true;
+    } while (!(element++)->isLastForTile());
+    return false;
+}
+
+// Reactive scenery (OpenRCT2 extension): evaluate a trigger to "engaged" from nearby world state.
+// Adding a trigger type = one more case here (+ the JSON string in SmallSceneryObject.cpp).
+static bool EvaluateReactiveTrigger(
+    const ReactiveTrigger& reactive, const SmallSceneryElement& scenery, const CoordsXYZ& loc)
+{
+    switch (reactive.type)
+    {
+        case ReactiveTriggerType::crossing:
+        {
+            // A railway crossing gate engages while a level crossing near its tile is blocked by an
+            // approaching train (Vehicle::UpdateCrossings() maintains that per-path bit ~4 tiles ahead of a
+            // supportsLevelCrossings ride). We scan every tile within kCrossingSenseRadius (Chebyshev) of
+            // the gate - a (2r+1)x(2r+1) block centred on it - instead of only the single tile it faces, so
+            // triggering is rotation-independent and forgiving: the gate just has to sit near the crossing,
+            // in any orientation. (The original "face exactly one tile at exactly the path's height" rule
+            // fired on only ~1 in 6 placements.) A larger radius also lowers the gate a touch earlier, since
+            // it picks up the blocked crossing from further back as the train approaches.
+            const CoordsXY origin{ loc.x, loc.y };
+            for (int32_t dy = -kCrossingSenseRadius; dy <= kCrossingSenseRadius; dy++)
+            {
+                for (int32_t dx = -kCrossingSenseRadius; dx <= kCrossingSenseRadius; dx++)
+                {
+                    const CoordsXY tile{ origin.x + dx * kCoordsXYStep, origin.y + dy * kCoordsXYStep };
+                    if (CrossingBlockedAtTile(tile, loc.z))
+                        return true;
+                }
+            }
+            return false;
+        }
+        case ReactiveTriggerType::none:
+        default:
+            return false;
+    }
+}
+
 template<bool invalidate, bool invalidateAllViewports>
 static std::optional<UpdateType> UpdateSmallSceneryAnimation(
-    const SmallSceneryElement& scenery, const CoordsXYZ& loc, const int32_t baseZ, const Viewport* const viewport)
+    SmallSceneryElement& scenery, const CoordsXYZ& loc, const int32_t baseZ, const Viewport* const viewport)
 {
     const auto* const entry = scenery.GetEntry();
     if (entry == nullptr)
     {
         return std::nullopt;
+    }
+
+    if (entry->reactive.type != ReactiveTriggerType::none)
+    {
+        // Reactive scenery: drive the `age` cursor over one authored open(0)->closed(last) sequence, so
+        // the gate animates continuously through lower / hold / raise (a static hold can't show flashing
+        // lights). Engaged: sweep the cursor up to holdLoopStart (LOWER), then loop [holdLoopStart, last]
+        // (HOLD - the flashing frames); clear: sweep back down to 0 (RAISE), then rest at open. Returns
+        // `update` every tick so it keeps polling the trigger, and redraws only when the frame changes -
+        // which is every step while active (incl. the hold loop), so the flash renders, but nothing while
+        // idle-open. The paint reads `age` as the frame index (Paint.SmallScenery).
+        const uint8_t lastFrame = entry->FrameOffsetCount > 0 ? static_cast<uint8_t>(entry->FrameOffsetCount - 1) : 0;
+        uint8_t holdStart = entry->reactive.holdLoopStart;
+        if (holdStart == 0 || holdStart > lastFrame)
+            holdStart = lastFrame; // unset / out of range -> a static hold at the last frame (no flash loop)
+
+        const bool engaged = EvaluateReactiveTrigger(entry->reactive, scenery, loc);
+        const uint8_t cur = scenery.GetAge();
+
+        // Two independent cadences: the sweep (lower/raise) and the hold-loop flash each advance one frame
+        // per their own game-tick period, so a gate's open/close speed and its flashing rate tune apart.
+        // In the hold loop (engaged and at/after holdStart) use flashTicks; otherwise the sweep uses
+        // sweepTicks. Updates run only on even ticks, so round the period down to even with a floor of 2
+        // (= fastest, one step per update) and gate on currentTicks % period.
+        const bool inHold = engaged && cur >= holdStart;
+        uint32_t period = inHold ? entry->reactive.flashTicks : entry->reactive.sweepTicks;
+        period &= ~1u;
+        if (period < 2)
+            period = 2;
+        const bool stepTick = (getGameState().currentTicks % period) == 0;
+
+        uint8_t next = cur;
+        if (stepTick)
+        {
+            if (engaged)
+            {
+                if (cur < holdStart)
+                    next = static_cast<uint8_t>(cur + 1); // lower
+                else
+                    next = cur >= lastFrame ? holdStart : static_cast<uint8_t>(cur + 1); // hold loop
+            }
+            else if (cur > 0)
+            {
+                next = static_cast<uint8_t>(cur - 1); // raise
+            }
+        }
+
+        if (next != cur)
+        {
+            scenery.SetAge(next);
+            if constexpr (invalidate)
+            {
+                Invalidate<invalidateAllViewports>(viewport, loc.x, loc.y, baseZ, scenery.getClearanceZ(), kMaxZoom);
+            }
+        }
+        return std::optional(UpdateType::update);
     }
 
     if (entry->flags.hasAny(
@@ -532,7 +656,9 @@ static std::optional<UpdateType> IsElementAnimated(const TileElementBase& elemen
             const auto* const entry = scenery->GetEntry();
             if (entry != nullptr && entry->flags.has(SmallSceneryFlag::isAnimated))
             {
-                if (entry->flags.has(SmallSceneryFlag::isClock))
+                // Clocks and reactive scenery need a per-tick UPDATE (they mutate state / poll the world),
+                // not just an invalidate; ordinary animated scenery only needs redrawing.
+                if (entry->flags.has(SmallSceneryFlag::isClock) || entry->reactive.type != ReactiveTriggerType::none)
                 {
                     return std::optional(UpdateType::update);
                 }
