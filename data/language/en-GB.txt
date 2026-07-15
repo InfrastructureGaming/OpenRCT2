@@ -3852,3 +3852,5 @@ STR_7118    :Intensity floor softening
 STR_7119    :Lowers the minimum intensity newly-arriving guests insist on, so more of them are willing to try gentle rides. Only the floor is lowered, so nervous guests still avoid extreme rides. Affects guests spawned while this is on. 0 = default game behaviour.
 STR_7120    :Ride memory penalty
 STR_7121    :How reluctant guests are to re-ride something they have already been on, in excitement points. Normally a ride is off the guest's list forever once ridden; this instead lets them re-ride when nothing new is nearby, keeping rides busy in a settled park. Works best with ride distance weighting. 0.00 = default game behaviour (already-ridden rides are never chosen again).
+STR_7130    :Missing custom rides
+STR_7131    :This park uses custom rides that aren't installed, so they were left out: {STRING}. Install them in your custom_rides folder and reload the park to restore them.

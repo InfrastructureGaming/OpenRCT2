@@ -81,7 +81,13 @@ namespace OpenRCT2::GameActions
 
         if (!pathElement->AdditionIsGhost() && (GetFlags().has(CommandFlag::ghost)))
         {
-            LOG_WARNING("Tried to remove non ghost during ghost removal.");
+            // Expected on EVERY normal placement, not an error: placing a path addition commits the
+            // real element first, then tears down the provisional cursor GHOST via this action (ghost
+            // flag set). By then the tile holds the just-placed REAL addition, so this guard correctly
+            // declines to let ghost-cleanup delete it and bails harmlessly in Query (Execute never
+            // runs). Logged at VERBOSE (off by default) rather than WARNING so it doesn't spam the
+            // console once per placement and bury genuinely useful warnings.
+            LOG_VERBOSE("Tried to remove non ghost during ghost removal.");
             return Result(Status::disallowed, STR_CANT_REMOVE_THIS, kStringIdNone);
         }
         auto res = Result();

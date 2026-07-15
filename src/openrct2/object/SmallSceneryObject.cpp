@@ -256,6 +256,31 @@ void SmallSceneryObject::PerformFixes()
                 _legacyType.flags.set(SmallSceneryFlag::hasFrameOffsets);
             }
 
+            // Reactive scenery (OpenRCT2 extension): a trigger that drives the animation frame from world
+            // state instead of a timer (see SmallSceneryEntry.h). Only present on authored parkobj objects;
+            // legacy .DAT objects never reach here so their reactive.type stays `none`. A reactive object is
+            // animated by definition, so ensure isAnimated is set even if the author omitted it — the frame
+            // sequence itself comes from frameOffsets above.
+            auto jReactive = properties["reactiveTrigger"];
+            if (jReactive.is_object())
+            {
+                auto triggerType = Json::GetString(jReactive["type"]);
+                if (triggerType == "crossing")
+                    _legacyType.reactive.type = ReactiveTriggerType::crossing;
+                else
+                    _legacyType.reactive.type = ReactiveTriggerType::none;
+
+                if (_legacyType.reactive.type != ReactiveTriggerType::none)
+                {
+                    _legacyType.reactive.holdLoopStart = Json::GetNumber<uint8_t>(jReactive["holdLoopStart"], 0);
+                    // Per-phase step cadence (game ticks per frame); default 4 matches the old shared
+                    // 2^delay=2 feel so gates authored before this field keep their timing.
+                    _legacyType.reactive.sweepTicks = Json::GetNumber<uint8_t>(jReactive["sweepTicks"], 4);
+                    _legacyType.reactive.flashTicks = Json::GetNumber<uint8_t>(jReactive["flashTicks"], 4);
+                    _legacyType.flags.set(SmallSceneryFlag::isAnimated);
+                }
+            }
+
             SetPrimarySceneryGroup(ObjectEntryDescriptor(Json::GetString(properties["sceneryGroup"])));
         }
 

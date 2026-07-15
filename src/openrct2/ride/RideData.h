@@ -532,6 +532,14 @@ struct FlatRideRotationDescriptor
     uint8_t  RotateToLoad     = 0;   // 1 = batch rotate-to-load: board PlatformCabins gondolas, rotate that many
                                      // cabin-spacings, board the next batch, ... (see FindVehicleToEnter gate).
     uint8_t  PlatformCabins   = 0;   // gondolas the loading platform holds at once (RotateToLoad batch size).
+    // Large-ride structure decomposition (beats the tall-sprite wall). When > 0, the ride's tall
+    // structure is NOT drawn as one sprite from the track element (PaintGenericRotatingStructure
+    // early-returns); instead the ride owns StructureSegmentCount short RideStructureSegment slice
+    // entities stacked up its centre column, each with a bbox at its OWN Z so it sorts locally. The
+    // segments are EPHEMERAL — respawned by Ride::Update on placement/load, removed by RideDelete,
+    // never serialized. 0 = off (every legacy ride unchanged). See RideStructureSegment.h.
+    uint8_t  StructureSegmentCount  = 0;
+    uint8_t  StructureSegmentHeight = 16;  // world-Z units per slice (kept < 128 so each slice sorts local)
     // Redraw region for the ride's structure when its animation frame changes. The paint
     // invalidates this region DIRECTLY (ViewportsInvalidate takes int32) rather than via the
     // entity's EntitySpriteData, whose fields are uint8 (255px max) AND serialized into the

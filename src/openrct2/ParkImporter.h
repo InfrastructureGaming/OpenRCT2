@@ -13,6 +13,7 @@
 #include "object/ObjectList.h"
 
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace OpenRCT2
@@ -58,6 +59,15 @@ public:
     virtual void Import(OpenRCT2::GameState_t& gameState) = 0;
     virtual bool PopulateIndexEntry(ScenarioIndexEntry* dst) = 0;
     virtual OpenRCT2::ParkPreview GetParkPreview() = 0;
+
+    // String IDs (custom_rides folder names) of any custom ride types this park referenced but which
+    // are not installed on this machine. Populated during Import(); empty for formats without custom
+    // rides (S4/S6) and for parks whose custom rides all resolved. Lets the caller warn the user which
+    // rides to install rather than silently dropping them.
+    virtual std::vector<std::string> GetMissingCustomRideTypes() const
+    {
+        return {};
+    }
 };
 
 namespace OpenRCT2::ParkImporter

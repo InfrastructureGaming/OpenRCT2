@@ -116,6 +116,11 @@ namespace OpenRCT2
         std::vector<const ObjectRepositoryItem*> ExportObjectsList;
         bool OmitTracklessRides{};
 
+        const std::vector<std::string>& GetMissingCustomRideTypeNames() const
+        {
+            return _missingCustomRideTypeNames;
+        }
+
     private:
         std::unique_ptr<OrcaStream> _os;
         ObjectEntryIndex _pathToSurfaceMap[kMaxPathObjects];
@@ -126,6 +131,10 @@ namespace OpenRCT2
         std::unordered_map<ride_type_t, ride_type_t> _customRideTypeRemap;
         // Ride IDs whose custom type could not be resolved; cleared and removed after full load.
         std::vector<RideId> _orphanedCustomRideIds;
+        // String IDs (custom_rides folder names) of the unresolved custom ride types, deduplicated, so
+        // the caller can tell the user which rides to install. Distinct from _orphanedCustomRideIds:
+        // that lists every affected ride instance, this lists each missing ride TYPE once.
+        std::vector<std::string> _missingCustomRideTypeNames;
 
         void ThrowIfIncompatibleVersion()
         {
@@ -1428,6 +1437,7 @@ namespace OpenRCT2
                 if (cs.getMode() == OrcaStream::Mode::reading)
                 {
                     _customRideTypeRemap.clear();
+                    _missingCustomRideTypeNames.clear();
                     auto& registry = GetRideTypeRegistry();
                     for (const auto& e : entries)
                     {
@@ -1440,6 +1450,9 @@ namespace OpenRCT2
                         else
                         {
                             _customRideTypeRemap[static_cast<ride_type_t>(e.first)] = kRideTypeNull;
+                            // Remember the folder name so the caller can tell the user which ride to
+                            // install; each entry is already a distinct type, so no dedup needed here.
+                            _missingCustomRideTypeNames.push_back(e.second);
                             LOG_WARNING(
                                 "Custom ride type '%s' is no longer available; rides of this type will be removed.",
                                 e.second.c_str());
@@ -2950,6 +2963,11 @@ public:
     ParkPreview GetParkPreview() override
     {
         return _parkFile->ReadPreviewChunk();
+    }
+
+    std::vector<std::string> GetMissingCustomRideTypes() const override
+    {
+        return _parkFile->GetMissingCustomRideTypeNames();
     }
 };
 

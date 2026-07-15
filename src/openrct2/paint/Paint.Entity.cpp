@@ -16,6 +16,7 @@
 #include "../entity/JumpingFountain.h"
 #include "../entity/MoneyEffect.h"
 #include "../entity/Particle.h"
+#include "../entity/RideStructureSegment.h"
 #include "../entity/Staff.h"
 #include "../interface/Viewport.h"
 #include "../profiling/Profiling.h"
@@ -34,6 +35,7 @@
 #include "entity/Paint.JumpingFountain.h"
 #include "entity/Paint.Litter.h"
 #include "entity/Paint.MoneyEffect.h"
+#include "entity/Paint.RideStructureSegment.h"
 #include "entity/Paint.Staff.h"
 #include "entity/Paint.SteamParticle.h"
 #include "entity/Paint.Vehicle.h"
@@ -182,6 +184,9 @@ void EntityPaintSetup(PaintSession& session, const CoordsXY& pos)
                 break;
             case EntityType::litter:
                 PaintLitter(session, *entity->cast<Litter>(), image_direction);
+                break;
+            case EntityType::rideStructureSegment:
+                PaintRideStructureSegment(session, *entity->cast<RideStructureSegment>(), image_direction);
                 break;
             default:
                 assert(false);

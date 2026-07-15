@@ -30,6 +30,7 @@
 #include "../entity/EntityList.h"
 #include "../entity/EntityRegistry.h"
 #include "../entity/Peep.h"
+#include "../entity/RideStructureSegment.h"
 #include "../entity/Staff.h"
 #include "../interface/Viewport.h"
 #include "../interface/WindowBase.h"
@@ -223,6 +224,12 @@ void RideDelete(RideId id)
     assert(gameState.rides[idx].type != kRideTypeNull);
 
     auto& ride = gameState.rides[idx];
+
+    // Large rides: destroy this ride's structure-segment entities before the ride record is reset,
+    // so no orphaned slice entities are left drawing over the map. Catches every demolish path
+    // (this is the single central ride-deletion function).
+    RideStructureSegmentsRemove(id);
+
     RideReset(ride);
 
     // Shrink maximum ride size.
@@ -856,6 +863,13 @@ void Ride::update()
     // Ride specific updates
     if (rtd.RideUpdate != nullptr)
         rtd.RideUpdate(*this);
+
+    // Large rides: ensure this ride's structure-segment entities exist (and follow the ride if it
+    // moved). Ephemeral (respawned, never serialized), so this both spawns them on fresh placement
+    // and reconstructs them after a load. Then push the current animation frame onto them (SPIN).
+    // Cheap no-op for the overwhelming majority of rides (StructureSegmentCount == 0).
+    RideStructureSegmentsEnsure(*this);
+    RideStructureSegmentsUpdate(*this);
 
     RideBreakdownUpdate(*this);
 

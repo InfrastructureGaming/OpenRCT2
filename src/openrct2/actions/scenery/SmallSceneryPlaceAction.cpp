@@ -443,7 +443,11 @@ namespace OpenRCT2::GameActions
             SmallSceneryPlaceActionResult{ groundFlags, sceneryElement->getBaseZ(), sceneryElement->GetSceneryQuadrant() });
 
         MapInvalidateTileFull(_loc);
-        if (sceneryEntry->flags.has(SmallSceneryFlag::isClock))
+        // Clocks and reactive scenery need a per-tick UPDATE (they mutate state / poll the world); other
+        // animated scenery only needs redrawing. Must match MapAnimation.cpp's IsElementAnimated so a
+        // freshly-placed element lands in the same set it would after a save/reload (MarkAllTiles).
+        if (sceneryEntry->flags.has(SmallSceneryFlag::isClock)
+            || sceneryEntry->reactive.type != ReactiveTriggerType::none)
         {
             MapAnimations::MarkTileForUpdate(TileCoordsXY(_loc));
         }

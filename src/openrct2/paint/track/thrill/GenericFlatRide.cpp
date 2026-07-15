@@ -9,6 +9,7 @@
 
 #include "../../../GameState.h"
 #include "../../../entity/EntityRegistry.h"
+#include "../../../entity/RideStructureSegment.h"
 #include "../../../interface/Viewport.h"
 #include "../../../ride/Ride.h"
 #include "../../../ride/RideData.h"
@@ -52,6 +53,15 @@ static void PaintGenericRotatingStructure(
     if (desc.FramesPerDir == 0)
         return;
 
+    // Console-probe path ONLY: when a ride has FORCED placeholder slice ENTITIES via the
+    // seg_stack/ride_segments debug override, those entities draw the placeholder stack, so skip the
+    // real structure draw here to avoid double-rendering. GetEffectiveCount now reports the override
+    // ONLY (see RideStructureSegment.cpp EffectiveSegments) — a normal authored large ride does NOT use
+    // entities for its structure: it draws its z-sliced stack inline below, where the per-tile redundant
+    // draw already spreads it horizontally. So an authored ride is NOT suppressed here.
+    if (RideStructureSegmentGetEffectiveCount(ride) > 0)
+        return;
+
     const auto* rideEntry = GetRideEntryByIndex(ride.subtype);
     if (rideEntry == nullptr)
         return;
@@ -89,12 +99,18 @@ static void PaintGenericRotatingStructure(
         }
     }
 
-    // Mirrors Enterprise's structure draw exactly: the bb offset is tile-local (0,0,height+7),
-    // NOT redirected to the centre like the image draw position is. This lets each of the
-    // redundant draws sort correctly against its own host tile's neighbours, while the sprite
-    // itself is redrawn at the shared centre point so it visually appears in the right place.
-    CoordsXYZ offset(xOffset, yOffset, height + desc.StructureZOffset);
-    BoundBoxXYZ bb = { { 0, 0, height + desc.StructureZOffset }, { 24, 24, 48 } };
+    // The bb offset is tile-local (0,0,structureZ), NOT redirected to the centre like the image draw
+    // position is (offset.xy = xOffset,yOffset = centre - tile). This is Enterprise's trick: the sprite
+    // visually appears at the shared centre, but each of the ~N redundant per-tile draws sorts against
+    // its OWN host tile's neighbours — which is what lets a sprite far WIDER than one tile survive the
+    // per-tile painter's sort. This function is invoked once per footprint tile (each tile carries a
+    // track element), so column culling hands each tile only the ~32px screen slice over it and the
+    // union across the footprint tiles paints the full width. THIS IS THE HORIZONTAL half of a large
+    // ride's decomposition, and it comes for free from the existing per-tile invocation — an entity
+    // anchored at one tile cannot do it (it is only painted in the ~2 columns that reach its home tile).
+    const int32_t structureZ = height + desc.StructureZOffset;
+    CoordsXYZ offset(xOffset, yOffset, structureZ);
+    BoundBoxXYZ bb = { { 0, 0, structureZ }, { 24, 24, 48 } };
 
     // Map the three ride colours to the three remap ranges: Body→primary (243-254, "Main
     // Color"), Trim→secondary (202-213, "Additional Color 1"), Tertiary→tertiary (46-57,
@@ -114,8 +130,37 @@ static void PaintGenericRotatingStructure(
     // only 2 direction-blocks, so the atlas (structure + every rider) is half the size.
     const uint8_t numDirs = desc.SymmetricDirections ? 2 : 4;
     const uint8_t spriteDirection = ((direction + desc.BaseRotation) & 3) % numDirs;
-    auto imageId = imageTemplate.WithIndex(baseImageId + spriteDirection * desc.FramesPerDir + animFrame);
-    PaintAddImageAsParent(session, imageId, offset, bb);
+
+    // Large-ride VERTICAL decomposition (the z-slicer). When the tool packs the structure as
+    // StructureSegmentCount stacked screen-strips (atlas laid out (dir, frame, slice), slice innermost),
+    // draw each strip as its OWN parent with a SHORT bbox at that strip's Z, so every strip sorts
+    // locally against its true neighbours — instead of one tall sprite sorting its far top against an
+    // incomplete local set (the flicker mechanism / tall-sprite wall). The strip's baked packaging
+    // offset (anchor.y + slice*H) cancels the projection's -slice*H at the raised Z, so the strips
+    // recomposite pixel-perfect. Combined with the per-tile HORIZONTAL redundancy above, this is the
+    // full 2D (tile × slice) decomposition a large ride needs — with NO entities and NO extra atlas
+    // images (every footprint tile shares the one sliced block). sliceCount <= 1 keeps the legacy single
+    // draw, byte-identical for every existing ride.
+    const uint8_t sliceCount = desc.StructureSegmentCount;
+    if (sliceCount > 1)
+    {
+        const uint8_t sliceH = desc.StructureSegmentHeight > 0 ? desc.StructureSegmentHeight : 16;
+        const uint32_t frameBase
+            = (static_cast<uint32_t>(spriteDirection) * desc.FramesPerDir + animFrame) * sliceCount;
+        for (uint8_t s = 0; s < sliceCount; s++)
+        {
+            const int32_t sliceZ = structureZ + s * sliceH;
+            const CoordsXYZ sliceOffset(xOffset, yOffset, sliceZ);
+            const BoundBoxXYZ sliceBb = { { 0, 0, sliceZ }, { 24, 24, sliceH } };
+            const auto sliceImage = imageTemplate.WithIndex(baseImageId + frameBase + s);
+            PaintAddImageAsParent(session, sliceImage, sliceOffset, sliceBb);
+        }
+    }
+    else
+    {
+        const auto imageId = imageTemplate.WithIndex(baseImageId + spriteDirection * desc.FramesPerDir + animFrame);
+        PaintAddImageAsParent(session, imageId, offset, bb);
+    }
 
     // Rider overlays follow the coaster train->car->seat-pair model (mirrors VehiclePaint.cpp's
     // PaintVehicleRiders): the ride is ONE train of M gondola cars (RiderFrameStride), each car

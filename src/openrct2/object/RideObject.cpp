@@ -1283,6 +1283,10 @@ namespace OpenRCT2
         // Batch rotate-to-load (Phase 3): board PlatformCabins gondolas at a time, rotating between batches.
         data->Descriptor.RotateToLoad            = Json::GetBoolean(j["rotateToLoad"], false) ? 1 : 0;
         data->Descriptor.PlatformCabins          = Json::GetNumber<uint8_t>(j["platformCabins"], 0);
+        // Large-ride structure decomposition: >0 makes the ride own a stack of short slice entities
+        // (RideStructureSegment) instead of one tall structure sprite, beating the tall-sprite wall.
+        data->Descriptor.StructureSegmentCount   = Json::GetNumber<uint8_t>(j["structureSegmentCount"], 0);
+        data->Descriptor.StructureSegmentHeight  = Json::GetNumber<uint8_t>(j["structureSegmentHeight"], 16);
 
         if (!j.contains("programs") || !j["programs"].is_array())
         {
