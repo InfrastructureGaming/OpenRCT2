@@ -3857,3 +3857,5 @@ STR_7131    :This park uses custom rides that aren't installed, so they were lef
 STR_7132    :{WINDOW_COLOUR_2}Ride speed:
 STR_7133    :The cruising speed of this ride's trains, as a percentage of their normal speed
 STR_7134    :{COMMA16}%
+STR_7135    :Guests will re-ride rides they enjoy
+STR_7136    :Normally only coasters and a few circuit rides tempt a happy guest into going straight round again; flat, spinning and gentle rides are one-and-done. With this on, any ride a guest is enjoying can earn a spontaneous repeat, so your flat rides finally build the queues they deserve. Guests still only re-ride when they're happy and healthy.

@@ -659,6 +659,7 @@ namespace OpenRCT2::Config
             model->rideChoiceDistanceWeight = reader->GetFloat("ride_choice_distance_weight", 0.0f);
             model->intensityFloorReduction = static_cast<uint8_t>(reader->GetInt32("intensity_floor_reduction", 0));
             model->rideMemoryPenalty = reader->GetFloat("ride_memory_penalty", 0.0f);
+            model->allowRepeatRides = reader->GetBoolean("allow_repeat_rides", false);
         }
     }
 
@@ -670,6 +671,7 @@ namespace OpenRCT2::Config
         writer->WriteFloat("ride_choice_distance_weight", model->rideChoiceDistanceWeight);
         writer->WriteInt32("intensity_floor_reduction", model->intensityFloorReduction);
         writer->WriteFloat("ride_memory_penalty", model->rideMemoryPenalty);
+        writer->WriteBoolean("allow_repeat_rides", model->allowRepeatRides);
     }
 
     bool SetDefaults()

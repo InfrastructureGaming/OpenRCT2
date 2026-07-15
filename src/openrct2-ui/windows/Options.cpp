@@ -250,6 +250,7 @@ namespace OpenRCT2::Ui::Windows
         WIDX_RIDE_MEMORY_PENALTY,
         WIDX_RIDE_MEMORY_PENALTY_UP,
         WIDX_RIDE_MEMORY_PENALTY_DOWN,
+        WIDX_ALLOW_REPEAT_RIDES,
 
         // Advanced
         WIDX_GROUP_RCT1_PATH = WIDX_PAGE_START,
@@ -457,7 +458,7 @@ namespace OpenRCT2::Ui::Windows
         makeWidget({175, kTweaksStart + 76}, {125, 14}, WidgetType::dropdownMenu, WindowColour::secondary                                                                      ), // Default inspection time dropdown
         makeWidget({288, kTweaksStart + 77}, { 11, 12}, WidgetType::button,       WindowColour::secondary, STR_DROPDOWN_GLYPH,       STR_DEFAULT_INSPECTION_INTERVAL_TIP       ), // Default inspection time dropdown button
 
-        makeWidget        ({  5, kGuestLogicStart +  0}, {300, 84}, WidgetType::groupbox, WindowColour::secondary, STR_GUEST_LOGIC_GROUP                                                ), // Guest Logic group
+        makeWidget        ({  5, kGuestLogicStart +  0}, {300, 100}, WidgetType::groupbox, WindowColour::secondary, STR_GUEST_LOGIC_GROUP                                               ), // Guest Logic group
         makeWidget        ({ 10, kGuestLogicStart + 16}, {185, 12}, WidgetType::label,    WindowColour::secondary, STR_GUEST_QUEUE_TOLERANCE,      STR_GUEST_QUEUE_TOLERANCE_TIP          ), // Queue tolerance (label)
         makeSpinnerWidgets({200, kGuestLogicStart + 15}, {100, 14}, WidgetType::spinner,  WindowColour::secondary, kStringIdNone,                  STR_GUEST_QUEUE_TOLERANCE_TIP          ), // Queue tolerance spinner (3 widgets)
         makeWidget        ({ 10, kGuestLogicStart + 32}, {185, 12}, WidgetType::label,    WindowColour::secondary, STR_GUEST_RIDE_DISTANCE_WEIGHT, STR_GUEST_RIDE_DISTANCE_WEIGHT_TIP     ), // Ride distance weighting (label)
@@ -465,7 +466,8 @@ namespace OpenRCT2::Ui::Windows
         makeWidget        ({ 10, kGuestLogicStart + 48}, {185, 12}, WidgetType::label,    WindowColour::secondary, STR_GUEST_INTENSITY_FLOOR,      STR_GUEST_INTENSITY_FLOOR_TIP          ), // Intensity floor softening (label)
         makeSpinnerWidgets({200, kGuestLogicStart + 47}, {100, 14}, WidgetType::spinner,  WindowColour::secondary, kStringIdNone,                  STR_GUEST_INTENSITY_FLOOR_TIP          ), // Intensity floor softening spinner (3 widgets)
         makeWidget        ({ 10, kGuestLogicStart + 64}, {185, 12}, WidgetType::label,    WindowColour::secondary, STR_GUEST_RIDE_MEMORY_PENALTY,  STR_GUEST_RIDE_MEMORY_PENALTY_TIP      ), // Ride memory penalty (label)
-        makeSpinnerWidgets({200, kGuestLogicStart + 63}, {100, 14}, WidgetType::spinner,  WindowColour::secondary, kStringIdNone,                  STR_GUEST_RIDE_MEMORY_PENALTY_TIP      )  // Ride memory penalty spinner (3 widgets)
+        makeSpinnerWidgets({200, kGuestLogicStart + 63}, {100, 14}, WidgetType::spinner,  WindowColour::secondary, kStringIdNone,                  STR_GUEST_RIDE_MEMORY_PENALTY_TIP      ), // Ride memory penalty spinner (3 widgets)
+        makeWidget        ({ 10, kGuestLogicStart + 82}, {290, 12}, WidgetType::checkbox, WindowColour::secondary, STR_GUEST_ALLOW_REPEAT_RIDES,   STR_GUEST_ALLOW_REPEAT_RIDES_TIP       )  // Allow repeat rides (checkbox)
     );
 
     constexpr int32_t kRCT1Start = 53;
@@ -1870,6 +1872,11 @@ namespace OpenRCT2::Ui::Windows
                     Config::Save();
                     invalidate();
                     break;
+                case WIDX_ALLOW_REPEAT_RIDES:
+                    Config::Get().guestLogic.allowRepeatRides ^= 1;
+                    Config::Save();
+                    invalidate();
+                    break;
                 case WIDX_SCENARIO_UNLOCKING:
                 {
                     Config::Get().general.scenarioUnlockingEnabled ^= 1;
@@ -2095,6 +2102,8 @@ namespace OpenRCT2::Ui::Windows
 
             auto selectedIndex = EnumValue(Config::Get().general.defaultInspectionInterval);
             widgets[WIDX_DEFAULT_INSPECTION_INTERVAL].text = kRideInspectionIntervalNames[selectedIndex];
+
+            setCheckboxValue(WIDX_ALLOW_REPEAT_RIDES, Config::Get().guestLogic.allowRepeatRides);
         }
 
         void MiscDraw(RenderTarget& rt)

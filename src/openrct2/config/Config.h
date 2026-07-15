@@ -268,6 +268,16 @@ namespace OpenRCT2::Config
         // = a bigger penalty, i.e. more reluctant to repeat. Best paired with ride distance weighting so
         // repeats stay local rather than sending guests back across the park to a favourite coaster.
         float rideMemoryPenalty;
+
+        // Separate from rideMemoryPenalty (which governs choosing an already-ridden ride as a fresh
+        // destination): this governs the SPONTANEOUS re-ride - a happy guest standing by a ride deciding
+        // to go straight round again. Vanilla gates that on RtdFlag::guestsWillRideAgain, which coasters
+        // and a few circuit rides have but flat/spinning/most gentle rides do not, so guests never hop
+        // back on your flat rides no matter how much they enjoyed them. When true, the flag requirement
+        // is waived for rides that lack it, so any ride becomes eligible for a spontaneous repeat - but
+        // only through the unchanged happiness/energy/nausea/hunger/thirst/randomised gates below it, so
+        // repeats still happen only when the guest is genuinely having a great time. false = vanilla.
+        bool allowRepeatRides;
     };
 
     struct Config

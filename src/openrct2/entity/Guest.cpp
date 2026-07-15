@@ -3005,7 +3005,12 @@ namespace OpenRCT2
 
     static bool GuestShouldGoOnRideAgain(Guest& guest, const Ride& ride)
     {
-        if (!ride.getRideTypeDescriptor().flags.has(RtdFlag::guestsWillRideAgain))
+        // Vanilla only lets guests spontaneously re-ride rides flagged guestsWillRideAgain (coasters and a
+        // handful of circuit rides); flat/spinning/most gentle rides lack it, so guests never hop back on
+        // them. The allowRepeatRides lever waives that flag requirement - every gate below still applies,
+        // so a repeat only happens when the guest is happy and healthy. Off = vanilla.
+        if (!ride.getRideTypeDescriptor().flags.has(RtdFlag::guestsWillRideAgain)
+            && !Config::Get().guestLogic.allowRepeatRides)
             return false;
         if (!RideHasRatings(ride))
             return false;
