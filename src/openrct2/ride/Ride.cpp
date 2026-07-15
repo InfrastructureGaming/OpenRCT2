@@ -3043,6 +3043,12 @@ static Vehicle* VehicleCreateCar(
     vehicle->mass = carEntry.car_mass;
     vehicle->num_seats = carEntry.num_seats;
     vehicle->speed = carEntry.powered_max_speed;
+    // Adjustable-speed transport rides scale the powered-acceleration target (read live every tick in
+    // Vehicle::UpdateTrackMotionPoweredRideAcceleration) by the ride's cruise-speed percentage. 100% keeps
+    // the vehicle's stock speed; the clamp guards the uint8 field against an unusually fast custom vehicle.
+    if (ride.getRideTypeDescriptor().flags.has(RtdFlag::hasAdjustableTransportSpeed))
+        vehicle->speed = static_cast<uint8_t>(
+            std::min<uint32_t>(255, carEntry.powered_max_speed * ride.operationOption / 100));
     vehicle->powered_acceleration = carEntry.powered_acceleration;
     vehicle->velocity = 0;
     vehicle->acceleration = 0;

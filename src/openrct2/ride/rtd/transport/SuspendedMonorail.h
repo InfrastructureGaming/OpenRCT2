@@ -33,10 +33,11 @@ constexpr RideTypeDescriptor SuspendedMonorailRTD =
                      RtdFlag::hasTrack, RtdFlag::supportsMultipleColourSchemes,
                      RtdFlag::allowMusic, RtdFlag::hasEntranceAndExit, RtdFlag::allowMoreVehiclesThanStationFits,
                      RtdFlag::allowMultipleCircuits, RtdFlag::isTransportRide, RtdFlag::showInTrackDesigner,
-                     RtdFlag::isSuspended),
+                     RtdFlag::isSuspended, RtdFlag::hasAdjustableTransportSpeed),
     .RideModes = EnumsToFlags(RideMode::continuousCircuit, RideMode::shuttle),
     .DefaultMode = RideMode::continuousCircuit,
-    .OperatingSettings = { 5, 27 },
+    // OperatingSettings min/max double as the "Ride speed" spinner bounds: 50%-200% of stock cruise speed.
+    .OperatingSettings = { 50, 200 },
     .Naming = { STR_RIDE_NAME_SUSPENDED_MONORAIL, STR_RIDE_DESCRIPTION_SUSPENDED_MONORAIL },
     .NameConvention = { RideComponentType::Train, RideComponentType::Track, RideComponentType::Station },
     .availableBreakdowns = { Breakdown::safetyCutOut, Breakdown::doorsStuckClosed, Breakdown::doorsStuckOpen, Breakdown::vehicleMalfunction },

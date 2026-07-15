@@ -1777,6 +1777,12 @@ enum : StringId
     STR_MISSING_CUSTOM_RIDES_TITLE = 7130,
     STR_MISSING_CUSTOM_RIDES_MESSAGE = 7131,
 
+    // Adjustable transport-ride speed: Operating-tab spinner shown for rides with
+    // RtdFlag::hasAdjustableTransportSpeed (Miniature Railway / Monorail / Suspended Monorail).
+    STR_RIDE_SPEED = 7132,
+    STR_RIDE_SPEED_TIP = 7133,
+    STR_RIDE_SPEED_PERCENT_VALUE = 7134,
+
     // Have to include resource strings (from scenarios and objects) for the time being now that language is partially working
     /* MAX_STR_COUNT = 32768 */ // MAX_STR_COUNT - upper limit for number of strings, not the current count strings
 };

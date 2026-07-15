@@ -198,6 +198,12 @@ namespace OpenRCT2::GameActions
         const auto& operatingSettings = rtd.OperatingSettings;
         ride->operationOption = (operatingSettings.MinValue * 3 + operatingSettings.MaxValue) / 4;
 
+        // Adjustable-speed transport rides reuse operationOption as a cruise-speed percentage. The generic
+        // low-quarter default above would land at 87%; force 100% so a freshly built ride runs at exactly
+        // its stock speed (byte-identical to vanilla until the player touches the spinner).
+        if (rtd.flags.has(RtdFlag::hasAdjustableTransportSpeed))
+            ride->operationOption = 100;
+
         ride->liftHillSpeed = rtd.LiftData.minimum_speed;
 
         ride->ratings.setNull();

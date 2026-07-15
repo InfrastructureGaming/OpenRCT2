@@ -3845,3 +3845,6 @@ STR_7111    :Custom Flat Ride
 STR_7112    :A modder-defined spinning flat ride with animation defined in a parkobj.
 STR_7130    :Missing custom rides
 STR_7131    :This park uses custom rides that aren't installed, so they were left out: {STRING}. Install them in your custom_rides folder and reload the park to restore them.
+STR_7132    :{WINDOW_COLOUR_2}Ride speed:
+STR_7133    :The cruising speed of this ride's trains, as a percentage of their normal speed
+STR_7134    :{COMMA16}%

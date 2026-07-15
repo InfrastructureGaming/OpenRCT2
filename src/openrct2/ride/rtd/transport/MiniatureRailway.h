@@ -33,10 +33,11 @@ constexpr RideTypeDescriptor MiniatureRailwayRTD =
                      RtdFlag::hasTrack, RtdFlag::supportsMultipleColourSchemes,
                      RtdFlag::allowMusic, RtdFlag::hasEntranceAndExit, RtdFlag::allowMoreVehiclesThanStationFits,
                      RtdFlag::allowMultipleCircuits, RtdFlag::isTransportRide, RtdFlag::showInTrackDesigner,
-                     RtdFlag::supportsLevelCrossings),
+                     RtdFlag::supportsLevelCrossings, RtdFlag::hasAdjustableTransportSpeed),
     .RideModes = EnumsToFlags(RideMode::continuousCircuit, RideMode::shuttle),
     .DefaultMode = RideMode::continuousCircuit,
-    .OperatingSettings = { 5, 27 },
+    // OperatingSettings min/max double as the "Ride speed" spinner bounds: 50%-200% of stock cruise speed.
+    .OperatingSettings = { 50, 200 },
     .Naming = { STR_RIDE_NAME_MINIATURE_RAILWAY, STR_RIDE_DESCRIPTION_MINIATURE_RAILWAY },
     .NameConvention = { RideComponentType::Train, RideComponentType::Track, RideComponentType::Station },
     .availableBreakdowns = { Breakdown::safetyCutOut, Breakdown::vehicleMalfunction },
