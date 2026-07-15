@@ -447,6 +447,11 @@ enum class RtdFlag : uint8_t
     poweredLaunchAffectsReliability,
     reverseInclineLaunchAffectsReliability,
 
+    // Reinterprets the (otherwise UI-hidden) operationOption on a powered transport ride as a
+    // cruise-speed percentage (100 = the vehicle's stock powered_max_speed). Drives the Operating-tab
+    // "Ride speed" spinner, the spawn-time speed seed, and the live rescale when the setting changes.
+    hasAdjustableTransportSpeed,
+
     isDummyType,
 };
 using RtdFlags = FlagHolder<uint64_t, RtdFlag>;

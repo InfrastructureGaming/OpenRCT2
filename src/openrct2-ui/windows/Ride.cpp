@@ -3648,6 +3648,14 @@ namespace OpenRCT2::Ui::Windows
                 // so no operating tweak row is shown (format stays empty).
                 format = kStringIdEmpty;
             }
+            else if (rtd.flags.has(RtdFlag::hasAdjustableTransportSpeed))
+            {
+                // Powered transport ride: operationOption is repurposed as a cruise-speed percentage
+                // (100 = the vehicle's stock speed). tweakValue already holds it (multiplier is 1).
+                format = STR_RIDE_SPEED_PERCENT_VALUE;
+                caption = STR_RIDE_SPEED;
+                tooltip = STR_RIDE_SPEED_TIP;
+            }
             else switch (ride->mode)
             {
                 case RideMode::poweredLaunchPasstrough:

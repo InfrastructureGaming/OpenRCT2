@@ -17,6 +17,7 @@
 #include "../../object/ObjectManager.h"
 #include "../../ride/Ride.h"
 #include "../../ride/RideData.h"
+#include "../../ride/Vehicle.h"
 #include "../../ui/WindowManager.h"
 #include "../../world/Map.h"
 
@@ -189,6 +190,26 @@ namespace OpenRCT2::GameActions
             case RideSetSetting::operation:
                 InvalidateTestResults(*ride);
                 ride->operationOption = _value;
+                // On an adjustable-speed transport ride, operationOption is a cruise-speed percentage.
+                // Re-scale every running car's powered-acceleration target now, so dragging the spinner
+                // speeds up / slows down trains already on the track. The physics reads Vehicle::speed live
+                // (Vehicle::UpdateTrackMotionPoweredRideAcceleration), so velocity eases smoothly to the new
+                // target; unspawned trains pick the value up from VehicleCreateCar when they next spawn.
+                if (ride->getRideTypeDescriptor().flags.has(RtdFlag::hasAdjustableTransportSpeed))
+                {
+                    auto& entities = getGameState().entities;
+                    for (int32_t i = 0; i < ride->numTrains; i++)
+                    {
+                        for (Vehicle* car = entities.GetEntity<Vehicle>(ride->vehicles[i]); car != nullptr;
+                             car = entities.GetEntity<Vehicle>(car->next_vehicle_on_train))
+                        {
+                            const auto* carEntry = car->Entry();
+                            if (carEntry != nullptr)
+                                car->speed = static_cast<uint8_t>(std::min<uint32_t>(
+                                    255, carEntry->powered_max_speed * ride->operationOption / 100));
+                        }
+                    }
+                }
                 break;
             case RideSetSetting::inspectionInterval:
 
