@@ -3859,3 +3859,5 @@ STR_7133    :The cruising speed of this ride's trains, as a percentage of their 
 STR_7134    :{COMMA16}%
 STR_7135    :Guests will re-ride rides they enjoy
 STR_7136    :Normally only coasters and a few circuit rides tempt a happy guest into going straight round again; flat, spinning and gentle rides are one-and-done. With this on, any ride a guest is enjoying can earn a spontaneous repeat, so your flat rides finally build the queues they deserve. Guests still only re-ride when they're happy and healthy.
+STR_7137    :Desperate guests seek out facilities
+STR_7138    :Normally a guest only looks for a toilet, food or drink stall within a few tiles, and only if a random thought happens to land on that need, so in a big or busy park desperate guests wander instead of finding relief. With this on, once a need turns critical the guest heads straight for the nearest facility anywhere in the park, even breaking off a trip to a ride. Cuts the "I need the toilet" complaints that wreck park ratings.

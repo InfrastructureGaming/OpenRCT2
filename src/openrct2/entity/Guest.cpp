@@ -460,8 +460,10 @@ namespace OpenRCT2
     static void GuestUpdateHunger(Guest& guest);
     static void GuestDecideWhetherToLeavePark(Guest& guest);
     static void GuestLeavePark(Guest& guest);
-    static void GuestHeadForNearestRideWithFlag(Guest& guest, bool considerOnlyCloseRides, RtdFlag rtdFlag);
-    static void GuestHeadForNearestRideWithSpecialType(Guest& guest, bool considerOnlyCloseRides, RtdSpecialType specialType);
+    static void GuestHeadForNearestRideWithFlag(
+        Guest& guest, bool considerOnlyCloseRides, RtdFlag rtdFlag, bool urgent = false);
+    static void GuestHeadForNearestRideWithSpecialType(
+        Guest& guest, bool considerOnlyCloseRides, RtdSpecialType specialType, bool urgent = false);
     static bool Loc690FD0(Guest& guest, RideId* rideToView, uint8_t* rideSeatToView, TileElement* tileElement);
     static void GuestUpdateWalkingBreakScenery(Guest& guest);
     static bool GuestFindRideToLookAt(Guest& guest, uint8_t edge, RideId* rideToView, uint8_t* rideSeatToView);
@@ -1042,6 +1044,38 @@ namespace OpenRCT2
         if (PeepFlags & PEEP_FLAGS_POSITION_FROZEN)
         {
             return;
+        }
+
+        // Needs-interrupt (Guest Logic): the moment a guest forms a toilet/food/drink need it is acted on
+        // deterministically - the guest heads to the nearest matching facility PARK-WIDE, even mid-trip to
+        // a ride - instead of vanilla's behaviour, which only searches a 10-tile box and only when a random
+        // thought roll happens to pick the need, so desperate guests wander in big/busy parks. The
+        // thresholds match the points at which the guest first forms the need-thought (toilet 160 / hunger
+        // 10 / thirst 25), so we are not making guests needier, just making the need they already express
+        // reliable to act on, with plenty of lead time to reach a distant facility before they suffer.
+        // Priority: toilet (worst rating-killer) > hunger > thirst; food/drink needs are skipped if already
+        // carrying some. The urgent flag also lets the guest commit to a facility whose queue is full (they
+        // queue rather than find nothing). PeepHeadForNearestRide no-ops if already heading to a matching
+        // facility, so this is idempotent and cheap (a park-wide facility scan is cheaper than the 10-tile
+        // tile scan). Off = vanilla.
+        if (Config::Get().guestLogic.needsInterrupt && State == PeepState::walking && !outsideOfPark
+            && !(PeepFlags & PEEP_FLAGS_LEAVING_PARK))
+        {
+            constexpr uint8_t kCriticalToilet = 160;
+            constexpr uint8_t kCriticalHunger = 10;
+            constexpr uint8_t kCriticalThirst = 25;
+            if (toilet >= kCriticalToilet)
+            {
+                GuestHeadForNearestRideWithSpecialType(*this, false, RtdSpecialType::toilet, true);
+            }
+            else if (hunger <= kCriticalHunger && !hasFoodOrDrink())
+            {
+                GuestHeadForNearestRideWithFlag(*this, false, RtdFlag::sellsFood, true);
+            }
+            else if (thirst <= kCriticalThirst && !hasFoodOrDrink())
+            {
+                GuestHeadForNearestRideWithFlag(*this, false, RtdFlag::sellsDrinks, true);
+            }
         }
 
         if (State == PeepState::walking && !outsideOfPark && !(PeepFlags & PEEP_FLAGS_LEAVING_PARK) && guestNumRides == 0
@@ -3285,7 +3319,7 @@ namespace OpenRCT2
     }
 
     template<typename T>
-    static void PeepHeadForNearestRide(Guest& guest, bool considerOnlyCloseRides, T predicate)
+    static void PeepHeadForNearestRide(Guest& guest, bool considerOnlyCloseRides, T predicate, bool forceParkWide = false)
     {
         if (guest.State != PeepState::sitting && guest.State != PeepState::watching && guest.State != PeepState::walking)
         {
@@ -3305,7 +3339,9 @@ namespace OpenRCT2
         }
 
         OpenRCT2::BitSet<Limits::kMaxRidesInPark> rideConsideration;
-        if (!considerOnlyCloseRides && (guest.hasItem(ShopItem::map)))
+        // forceParkWide (needs-interrupt) drops the 10-tile limit for a critically-needy guest so they can
+        // find a facility anywhere in the park, not just one that happens to sit within a 10-tile box.
+        if (forceParkWide || (!considerOnlyCloseRides && guest.hasItem(ShopItem::map)))
         {
             // Consider all rides in the park
             auto& gameState = getGameState();
@@ -3356,7 +3392,10 @@ namespace OpenRCT2
         {
             if (rideConsideration[ride.id.ToUnderlying()])
             {
-                if (!ride.flags.has(RideFlag::queueFull))
+                // A critically-needy guest (forceParkWide) commits to the nearest facility even if its
+                // queue is full - they will wait rather than find nothing - which also surfaces where the
+                // park is under-provisioned. Non-urgent seekers keep vanilla's skip-full-queues behaviour.
+                if (forceParkWide || !ride.flags.has(RideFlag::queueFull))
                 {
                     if (guest.shouldGoOnRide(ride, StationIndex::FromUnderlying(0), false, true))
                     {
@@ -3394,22 +3433,25 @@ namespace OpenRCT2
         }
     }
 
-    static void GuestHeadForNearestRideWithFlag(Guest& guest, bool considerOnlyCloseRides, RtdFlag rtdFlag)
+    static void GuestHeadForNearestRideWithFlag(Guest& guest, bool considerOnlyCloseRides, RtdFlag rtdFlag, bool urgent)
     {
-        PeepHeadForNearestRide(guest, considerOnlyCloseRides, [rtdFlag](const Ride& ride) {
-            return ride.getRideTypeDescriptor().flags.has(rtdFlag);
-        });
+        PeepHeadForNearestRide(
+            guest, considerOnlyCloseRides,
+            [rtdFlag](const Ride& ride) { return ride.getRideTypeDescriptor().flags.has(rtdFlag); }, urgent);
     }
 
-    static void GuestHeadForNearestRideWithSpecialType(Guest& guest, bool considerOnlyCloseRides, RtdSpecialType specialType)
+    static void GuestHeadForNearestRideWithSpecialType(
+        Guest& guest, bool considerOnlyCloseRides, RtdSpecialType specialType, bool urgent)
     {
-        if ((specialType == RtdSpecialType::toilet) && guest.hasFoodOrDrink())
+        // Vanilla suppresses toilet-seeking while the guest carries food/drink; an urgent (needs-interrupt)
+        // toilet trip overrides that, since a critically-full guest needs a toilet regardless.
+        if (!urgent && (specialType == RtdSpecialType::toilet) && guest.hasFoodOrDrink())
         {
             return;
         }
-        PeepHeadForNearestRide(guest, considerOnlyCloseRides, [specialType](const Ride& ride) {
-            return ride.getRideTypeDescriptor().specialType == specialType;
-        });
+        PeepHeadForNearestRide(
+            guest, considerOnlyCloseRides,
+            [specialType](const Ride& ride) { return ride.getRideTypeDescriptor().specialType == specialType; }, urgent);
     }
 
     /**

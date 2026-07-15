@@ -660,6 +660,7 @@ namespace OpenRCT2::Config
             model->intensityFloorReduction = static_cast<uint8_t>(reader->GetInt32("intensity_floor_reduction", 0));
             model->rideMemoryPenalty = reader->GetFloat("ride_memory_penalty", 0.0f);
             model->allowRepeatRides = reader->GetBoolean("allow_repeat_rides", false);
+            model->needsInterrupt = reader->GetBoolean("needs_interrupt", false);
         }
     }
 
@@ -672,6 +673,7 @@ namespace OpenRCT2::Config
         writer->WriteInt32("intensity_floor_reduction", model->intensityFloorReduction);
         writer->WriteFloat("ride_memory_penalty", model->rideMemoryPenalty);
         writer->WriteBoolean("allow_repeat_rides", model->allowRepeatRides);
+        writer->WriteBoolean("needs_interrupt", model->needsInterrupt);
     }
 
     bool SetDefaults()

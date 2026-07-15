@@ -278,6 +278,17 @@ namespace OpenRCT2::Config
         // only through the unchanged happiness/energy/nausea/hunger/thirst/randomised gates below it, so
         // repeats still happen only when the guest is genuinely having a great time. false = vanilla.
         bool allowRepeatRides;
+
+        // Vanilla only lets a guest look for a toilet/food/drink stall within a 10-tile box, and only when
+        // a random thought roll (fired roughly every 1000 ticks) happens to pick that need - so in a big or
+        // busy park a desperate guest can walk right past the problem and never divert, flooding the park
+        // with "I need the toilet" and tanking the rating. When true, a guest whose need crosses a critical
+        // threshold is redirected to the nearest matching facility PARK-WIDE and deterministically (no dice
+        // roll), even mid-trip to a ride, checked every 128-tick guest update. Toilet takes priority (the
+        // worst rating-killer), then hunger, then thirst; hunger/thirst are skipped if the guest is already
+        // carrying food/drink. false = vanilla. Note a park-wide facility search is actually CHEAPER than
+        // the 10-tile tile scan, so this is not a performance cost.
+        bool needsInterrupt;
     };
 
     struct Config
