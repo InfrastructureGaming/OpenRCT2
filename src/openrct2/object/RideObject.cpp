@@ -22,6 +22,7 @@
 #include "../drawing/Drawing.h"
 #include "../entity/Yaw.hpp"
 #include "../localisation/Language.h"
+#include "../paint/Paint.h"
 #include "../rct2/DATLimits.h"
 #include "../rct2/RCT2.h"
 #include "../ride/CarEntry.h"
@@ -1287,6 +1288,14 @@ namespace OpenRCT2
         // (RideStructureSegment) instead of one tall structure sprite, beating the tall-sprite wall.
         data->Descriptor.StructureSegmentCount   = Json::GetNumber<uint8_t>(j["structureSegmentCount"], 0);
         data->Descriptor.StructureSegmentHeight  = Json::GetNumber<uint8_t>(j["structureSegmentHeight"], 16);
+        // Extend the viewport paint's vertical tile-scan reach to cover this ride's full above-base sprite
+        // height, so its top survives a partial repaint (panning). Every z-slice hangs off the base tile,
+        // so a repaint region showing a slice must scan all the way down to that base; the fixed 2128
+        // margin is not enough for a tall ride. Use InvalidationHeightAbove - the same full height the ride
+        // uses for its animation dirty rect (which is exactly why running the ride already repaints it) -
+        // rather than the slice count alone, which under-measures the true sprite height. Grow-only
+        // watermark (see gMaxRidePaintHeightAbove in Paint.h).
+        gMaxRidePaintHeightAbove = std::max<int32_t>(gMaxRidePaintHeightAbove, data->Descriptor.InvalidationHeightAbove);
 
         if (!j.contains("programs") || !j["programs"].is_array())
         {

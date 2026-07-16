@@ -253,6 +253,16 @@ extern bool gPaintBlockedTiles;
 extern bool gPaintWidePathsAsGhost;
 extern bool gPaintStableSort;
 
+// Extra world pixels the viewport tile-scan reaches below its repaint region, beyond the usual 2128
+// margin, so that tall custom rides keep their top during a partial repaint (panning). A z-sliced ride's
+// slices all hang off its base tile, so a repaint region showing a slice must scan all the way down to
+// that base tile to emit it; a ride taller than the fixed 2128 reach loses its top otherwise. This is a
+// grow-only watermark of the tallest loaded ride's above-base sprite height (its InvalidationHeightAbove,
+// the same extent used for its animation dirty rect), set when ride objects load. Grow-only is safe: a
+// stale-high value only scans a few extra empty tiles (perf, never correctness). See
+// PaintSessionGenerateRotate in Paint.cpp.
+extern int32_t gMaxRidePaintHeightAbove;
+
 PaintStruct* PaintAddImageAsParent(
     PaintSession& session, ImageId image_id, const CoordsXYZ& offset, const BoundBoxXYZ& boundBox);
 /**

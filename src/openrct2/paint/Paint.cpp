@@ -61,6 +61,7 @@ bool gShowDirtyVisuals;
 bool gPaintBoundingBoxes;
 bool gPaintBlockedTiles;
 bool gPaintStableSort;
+int32_t gMaxRidePaintHeightAbove = 0;
 
 static void PaintPSImageWithBoundingBoxes(PaintSession& session, PaintStruct* ps, ImageId imageId, int32_t x, int32_t y);
 static ImageId PaintPSColourifyImage(const PaintStruct* ps, ImageId imageId, uint32_t viewFlags);
@@ -284,7 +285,10 @@ void PaintSessionGenerateRotate(PaintSession& session)
     }
     mapTile = mapTile.ToTileStart();
 
-    uint16_t numVerticalTiles = (session.rt.WorldHeight() + 2128) >> 5;
+    // The +2128 is the engine's fixed assumption for how far above its base tile a sprite can rise; the
+    // watermark extends it for tall custom rides, whose slices all hang off the base tile and would drop
+    // their tops when a repaint region (e.g. a pan strip) sits too far above that base. See Paint.h.
+    uint16_t numVerticalTiles = (session.rt.WorldHeight() + 2128 + gMaxRidePaintHeightAbove) >> 5;
 
     // Adjacent tiles to also check due to overlapping of sprites
     constexpr CoordsXY adjacentTiles[] = {

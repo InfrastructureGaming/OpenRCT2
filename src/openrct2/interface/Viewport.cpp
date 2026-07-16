@@ -363,8 +363,22 @@ namespace OpenRCT2
             auto top = drawRect.GetTop();
             auto bottom = drawRect.GetBottom();
 
+            // A tall z-sliced custom ride (gMaxRidePaintHeightAbove > 0) loses its upper slices on a
+            // vertical pan. The scroll-copy shortcut below repaints only the thin band newly exposed at the
+            // top/bottom edge; that band's tile-scan runs top-to-bottom, so a band near the bottom cannot
+            // re-emit slices sitting above it (every stacked slice hangs off the ride's single base tile, and
+            // the base is outside the band's downward reach). The cleared slices then stay blank until the
+            // next full invalidation (zoom, or the ride animating). Horizontal pans repaint full-height
+            // strips whose scan always reaches the base, so they are unaffected. When such a ride is loaded
+            // and the shift has any vertical component, skip the shortcut and repaint the whole rectangle --
+            // byte-for-byte the same full repaint zoom performs, which is known to render these rides
+            // correctly. Cost is bounded to vertical/diagonal pans in parks that actually hold a tall ride.
+            // (A band grown just to the ride's height was tried and regressed: the ride's base tile can sit
+            // above the viewport's top edge, which a clamped band can't reach but a full repaint handles.)
+            const bool tallRideForcesFullRedraw = gMaxRidePaintHeightAbove > 0 && shift.y != 0;
+
             // if moved more than the draw rectangle size
-            if (abs(shift.x) < drawRect.GetWidth() && abs(shift.y) < drawRect.GetHeight())
+            if (!tallRideForcesFullRedraw && abs(shift.x) < drawRect.GetWidth() && abs(shift.y) < drawRect.GetHeight())
             {
                 // update whole block ?
                 DrawingEngineCopyRect(
