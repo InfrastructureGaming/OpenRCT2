@@ -289,6 +289,18 @@ namespace OpenRCT2::Config
         // carrying food/drink. false = vanilla. Note a park-wide facility search is actually CHEAPER than
         // the 10-tile tile scan, so this is not a performance cost.
         bool needsInterrupt;
+
+        // The park rating counts every guest who is leaving the park AND whose guestIsLostCountdown has
+        // dropped below 90 as "lost", with an UNBOUNDED penalty of (lost-25)*7. But that countdown just
+        // decrements on a timer while a guest walks to the exit (checkCantFindExit) - it never checks
+        // whether the guest is actually making progress. So in a large park EVERY departing guest is
+        // eventually tallied as lost simply because the walk to a gate takes a while, which can drive the
+        // rating to zero even though nobody is truly stuck. When true, a leaving guest that the pathfinder
+        // successfully routes toward its chosen exit (a valid directed step in GuestPathFindParkEntrance
+        // Leaving) has its countdown refreshed, so only guests the pathfinder genuinely CANNOT route - a
+        // real dead-end or maze - ever count as lost. This corrects the rating's input, not the rating
+        // formula (which stays vanilla). false = vanilla (in-transit leavers count as lost).
+        bool smartLeaverLostTracking;
     };
 
     struct Config

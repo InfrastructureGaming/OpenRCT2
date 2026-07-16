@@ -252,6 +252,7 @@ namespace OpenRCT2::Ui::Windows
         WIDX_RIDE_MEMORY_PENALTY_DOWN,
         WIDX_ALLOW_REPEAT_RIDES,
         WIDX_NEEDS_INTERRUPT,
+        WIDX_SMART_LEAVER_LOST,
 
         // Advanced
         WIDX_GROUP_RCT1_PATH = WIDX_PAGE_START,
@@ -459,7 +460,7 @@ namespace OpenRCT2::Ui::Windows
         makeWidget({175, kTweaksStart + 76}, {125, 14}, WidgetType::dropdownMenu, WindowColour::secondary                                                                      ), // Default inspection time dropdown
         makeWidget({288, kTweaksStart + 77}, { 11, 12}, WidgetType::button,       WindowColour::secondary, STR_DROPDOWN_GLYPH,       STR_DEFAULT_INSPECTION_INTERVAL_TIP       ), // Default inspection time dropdown button
 
-        makeWidget        ({  5, kGuestLogicStart +  0}, {300, 116}, WidgetType::groupbox, WindowColour::secondary, STR_GUEST_LOGIC_GROUP                                               ), // Guest Logic group
+        makeWidget        ({  5, kGuestLogicStart +  0}, {300, 132}, WidgetType::groupbox, WindowColour::secondary, STR_GUEST_LOGIC_GROUP                                               ), // Guest Logic group
         makeWidget        ({ 10, kGuestLogicStart + 16}, {185, 12}, WidgetType::label,    WindowColour::secondary, STR_GUEST_QUEUE_TOLERANCE,      STR_GUEST_QUEUE_TOLERANCE_TIP          ), // Queue tolerance (label)
         makeSpinnerWidgets({200, kGuestLogicStart + 15}, {100, 14}, WidgetType::spinner,  WindowColour::secondary, kStringIdNone,                  STR_GUEST_QUEUE_TOLERANCE_TIP          ), // Queue tolerance spinner (3 widgets)
         makeWidget        ({ 10, kGuestLogicStart + 32}, {185, 12}, WidgetType::label,    WindowColour::secondary, STR_GUEST_RIDE_DISTANCE_WEIGHT, STR_GUEST_RIDE_DISTANCE_WEIGHT_TIP     ), // Ride distance weighting (label)
@@ -469,7 +470,8 @@ namespace OpenRCT2::Ui::Windows
         makeWidget        ({ 10, kGuestLogicStart + 64}, {185, 12}, WidgetType::label,    WindowColour::secondary, STR_GUEST_RIDE_MEMORY_PENALTY,  STR_GUEST_RIDE_MEMORY_PENALTY_TIP      ), // Ride memory penalty (label)
         makeSpinnerWidgets({200, kGuestLogicStart + 63}, {100, 14}, WidgetType::spinner,  WindowColour::secondary, kStringIdNone,                  STR_GUEST_RIDE_MEMORY_PENALTY_TIP      ), // Ride memory penalty spinner (3 widgets)
         makeWidget        ({ 10, kGuestLogicStart + 82}, {290, 12}, WidgetType::checkbox, WindowColour::secondary, STR_GUEST_ALLOW_REPEAT_RIDES,   STR_GUEST_ALLOW_REPEAT_RIDES_TIP       ), // Allow repeat rides (checkbox)
-        makeWidget        ({ 10, kGuestLogicStart + 98}, {290, 12}, WidgetType::checkbox, WindowColour::secondary, STR_GUEST_NEEDS_INTERRUPT,      STR_GUEST_NEEDS_INTERRUPT_TIP          )  // Needs interrupt (checkbox)
+        makeWidget        ({ 10, kGuestLogicStart + 98}, {290, 12}, WidgetType::checkbox, WindowColour::secondary, STR_GUEST_NEEDS_INTERRUPT,      STR_GUEST_NEEDS_INTERRUPT_TIP          ), // Needs interrupt (checkbox)
+        makeWidget        ({ 10, kGuestLogicStart +114}, {290, 12}, WidgetType::checkbox, WindowColour::secondary, STR_GUEST_SMART_LEAVER_LOST,    STR_GUEST_SMART_LEAVER_LOST_TIP        )  // Smart leaver lost tracking (checkbox)
     );
 
     constexpr int32_t kRCT1Start = 53;
@@ -1884,6 +1886,11 @@ namespace OpenRCT2::Ui::Windows
                     Config::Save();
                     invalidate();
                     break;
+                case WIDX_SMART_LEAVER_LOST:
+                    Config::Get().guestLogic.smartLeaverLostTracking ^= 1;
+                    Config::Save();
+                    invalidate();
+                    break;
                 case WIDX_SCENARIO_UNLOCKING:
                 {
                     Config::Get().general.scenarioUnlockingEnabled ^= 1;
@@ -2112,6 +2119,7 @@ namespace OpenRCT2::Ui::Windows
 
             setCheckboxValue(WIDX_ALLOW_REPEAT_RIDES, Config::Get().guestLogic.allowRepeatRides);
             setCheckboxValue(WIDX_NEEDS_INTERRUPT, Config::Get().guestLogic.needsInterrupt);
+            setCheckboxValue(WIDX_SMART_LEAVER_LOST, Config::Get().guestLogic.smartLeaverLostTracking);
         }
 
         void MiscDraw(RenderTarget& rt)

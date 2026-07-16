@@ -11,6 +11,7 @@
 
 #include "../Diagnostic.h"
 #include "../GameState.h"
+#include "../config/Config.h"
 #include "../core/Guard.hpp"
 #include "../entity/Guest.h"
 #include "../entity/Staff.h"
@@ -1687,6 +1688,22 @@ namespace OpenRCT2::PathFinding
         Direction chosenDirection = ChooseDirection(TileCoordsXYZ{ peep.NextLoc }, entranceGoal, peep, true, RideId::GetNull());
         if (chosenDirection == kInvalidDirection)
             return GuestPathfindAimless(peep, edges);
+
+        // Opt-in (Config::GuestLogic::smartLeaverLostTracking): reaching this point means the pathfinder
+        // produced a valid directed step toward the chosen exit, i.e. the guest is making progress and is
+        // not actually lost - only the kInvalidDirection fall-through above is genuinely stuck. Refresh the
+        // lost-countdown (which checkCantFindExit otherwise drains on a blind timer) so a normal in-transit
+        // leaver never trips the park rating's unbounded "lost guests" penalty just for the length of the
+        // walk to a gate. Guests the pathfinder cannot route (real dead-ends) still drain and still count.
+        // The refresh value matches the initial leaving countdown, so it comfortably outlasts the handful
+        // of checkCantFindExit ticks between path junctions where this routine runs.
+        if (Config::Get().guestLogic.smartLeaverLostTracking)
+        {
+            constexpr uint8_t kLeaverProgressCountdown = 200;
+            auto* guest = peep.as<Guest>();
+            if (guest != nullptr)
+                guest->guestIsLostCountdown = kLeaverProgressCountdown;
+        }
 
         return PeepMoveOneTile(chosenDirection, peep);
     }

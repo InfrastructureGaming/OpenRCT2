@@ -661,6 +661,7 @@ namespace OpenRCT2::Config
             model->rideMemoryPenalty = reader->GetFloat("ride_memory_penalty", 0.0f);
             model->allowRepeatRides = reader->GetBoolean("allow_repeat_rides", false);
             model->needsInterrupt = reader->GetBoolean("needs_interrupt", false);
+            model->smartLeaverLostTracking = reader->GetBoolean("smart_leaver_lost_tracking", false);
         }
     }
 
@@ -674,6 +675,7 @@ namespace OpenRCT2::Config
         writer->WriteFloat("ride_memory_penalty", model->rideMemoryPenalty);
         writer->WriteBoolean("allow_repeat_rides", model->allowRepeatRides);
         writer->WriteBoolean("needs_interrupt", model->needsInterrupt);
+        writer->WriteBoolean("smart_leaver_lost_tracking", model->smartLeaverLostTracking);
     }
 
     bool SetDefaults()
